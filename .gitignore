@@ -3,6 +3,7 @@ tmp/
 output/
 .tools/
 .superpowers/
+.worktrees/
 .env
 .env.*
 *.log
