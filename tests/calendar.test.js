@@ -1,54 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-
-import * as calendarModule from "../js/calendar.js";
-
-const { buildCalendarView, renderCalendar } = calendarModule;
-
-function createDocumentFixture() {
-  class Element {
-    constructor(tagName) {
-      this.tagName = tagName;
-      this.children = [];
-      this.dataset = {};
-      this.attributes = {};
-      this.className = "";
-      this.listeners = {};
-      this.classList = {
-        add: (...tokens) => {
-          this.className = [this.className, ...tokens].filter(Boolean).join(" ");
-        },
-      };
-    }
-
-    setAttribute(name, value) {
-      this.attributes[name] = value;
-    }
-
-    addEventListener(type, listener) {
-      this.listeners[type] = listener;
-    }
-
-    append(...children) {
-      this.children.push(...children);
-    }
-
-    replaceChildren(...children) {
-      this.children = children.flatMap((child) =>
-        child.tagName === "#fragment" ? child.children : child,
-      );
-    }
-  }
-
-  const document = {
-    createDocumentFragment: () => new Element("#fragment"),
-    createElement: (tagName) => new Element(tagName),
-  };
-  const root = new Element("div");
-  root.ownerDocument = document;
-
-  return root;
-}
+import { mount } from "@vue/test-utils";
+import { test } from "vitest";
+import { buildCalendarView } from "../src/lib/buildCalendarView.js";
+import CalendarGrid from "../src/components/CalendarGrid.vue";
+import MiniCalendar from "../src/components/MiniCalendar.vue";
 
 test("buildCalendarView describes every day in the visible month grid", () => {
   const days = buildCalendarView(2026, 7, [], new Date(2026, 7, 2));
@@ -131,8 +86,7 @@ test("buildCalendarView includes only events from visible calendars", () => {
   assert.deepEqual(eventDay.events, [events[1]]);
 });
 
-test("renderCalendar exposes each event calendar for category styling", () => {
-  const grid = createDocumentFixture();
+test("CalendarGrid exposes each event calendar for category styling", () => {
   const days = [
     {
       dateKey: "2026-08-15",
@@ -152,18 +106,13 @@ test("renderCalendar exposes each event calendar for category styling", () => {
     },
   ];
 
-  renderCalendar(grid, days, {
-    onDateSelect() {},
-    onEventSelect() {},
-  });
+  const wrapper = mount(CalendarGrid, { props: { days } });
+  const eventButton = wrapper.find(".event-summary");
 
-  const eventButton = grid.children[0].children[1].children[0].children[0];
-  assert.equal(eventButton.dataset.calendarId, "other");
+  assert.equal(eventButton.attributes("data-calendar-id"), "other");
 });
 
-test("renderMiniCalendar renders selectable dates from the visible month", () => {
-  const miniCalendar = createDocumentFixture();
-  const selectedDates = [];
+test("MiniCalendar renders selectable dates from the visible month", async () => {
   const days = [
     {
       dateKey: "2026-08-01",
@@ -183,15 +132,14 @@ test("renderMiniCalendar renders selectable dates from the visible month", () =>
     },
   ];
 
-  assert.equal(typeof calendarModule.renderMiniCalendar, "function");
-  calendarModule.renderMiniCalendar(miniCalendar, days, {
-    onDateSelect: (dateKey) => selectedDates.push(dateKey),
-  });
+  const wrapper = mount(MiniCalendar, { props: { days } });
+  const dateButtons = wrapper.findAll(".mini-calendar-date");
 
-  assert.equal(miniCalendar.children.length, 2);
-  assert.equal(miniCalendar.children[1].dataset.date, "2026-08-02");
-  assert.match(miniCalendar.children[1].className, /is-today/);
+  assert.equal(dateButtons.length, 2);
+  assert.equal(dateButtons[1].attributes("data-date"), "2026-08-02");
+  assert.ok(dateButtons[1].classes().includes("is-today"));
+  assert.equal(dateButtons[1].attributes("aria-current"), "date");
 
-  miniCalendar.children[0].listeners.click();
-  assert.deepEqual(selectedDates, ["2026-08-01"]);
+  await dateButtons[0].trigger("click");
+  assert.equal(wrapper.emitted("open-create")[0][0], "2026-08-01");
 });

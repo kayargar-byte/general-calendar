@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   STORAGE_KEY,
@@ -7,7 +7,7 @@ import {
   deleteEvent,
   getEvents,
   updateEvent,
-} from "../js/storage.js";
+} from "../src/lib/storage.js";
 
 class MemoryStorage {
   #values = new Map();
@@ -70,29 +70,20 @@ test("createEvent rejects unsupported calendar categories", () => {
   assert.deepEqual(getEvents(storage), []);
 });
 
-test("createEvent rejects invalid event fields", async (context) => {
-  const cases = [
-    ["empty title", { title: "  " }, /標題為必填/],
-    ["invalid date", { date: "2026-02-30" }, /日期格式無效/],
-    ["invalid start time", { startTime: "25:00" }, /開始時間格式無效/],
-    [
-      "end before start",
-      { startTime: "11:00", endTime: "10:00" },
-      /結束時間不得早於開始時間/,
-    ],
-  ];
+test.each([
+  ["empty title", { title: "  " }, /標題為必填/],
+  ["invalid date", { date: "2026-02-30" }, /日期格式無效/],
+  ["invalid start time", { startTime: "25:00" }, /開始時間格式無效/],
+  [
+    "end before start",
+    { startTime: "11:00", endTime: "10:00" },
+    /結束時間不得早於開始時間/,
+  ],
+])("createEvent rejects invalid event fields: %s", (name, overrides, expectedError) => {
+  const storage = new MemoryStorage();
 
-  for (const [name, overrides, expectedError] of cases) {
-    await context.test(name, () => {
-      const storage = new MemoryStorage();
-
-      assert.throws(
-        () => createEvent(buildEvent(overrides), storage),
-        expectedError,
-      );
-      assert.deepEqual(getEvents(storage), []);
-    });
-  }
+  assert.throws(() => createEvent(buildEvent(overrides), storage), expectedError);
+  assert.deepEqual(getEvents(storage), []);
 });
 
 test("getEvents sorts events by date and start time", () => {

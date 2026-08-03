@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   buildMonthGrid,
   formatDateLabel,
   formatMonthTitle,
   toDateKey,
-} from "../js/date-utils.js";
+} from "../src/lib/date-utils.js";
 
 test("toDateKey uses the local calendar date", () => {
   assert.equal(toDateKey(new Date(2026, 7, 2, 23, 30)), "2026-08-02");

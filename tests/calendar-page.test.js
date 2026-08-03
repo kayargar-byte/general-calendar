@@ -1,18 +1,65 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import test from "node:test";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { mount } from "@vue/test-utils";
+import { test } from "vitest";
+import App from "../src/App.vue";
 
-const calendarPageUrl = new URL("../calendar.html", import.meta.url);
-const calendarStylesUrl = new URL("../calendar.css", import.meta.url);
+const calendarPagePath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../calendar.html",
+);
+const calendarStylesPath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../src/styles/calendar.css",
+);
+
+const calendarIds = [
+  "personal",
+  "documents",
+  "medical",
+  "family",
+  "work",
+  "other",
+];
+
+const requiredIds = [
+  "create-event",
+  "mini-calendar",
+  "calendar-filters",
+  "calendar-title",
+  "calendar-grid",
+  "previous-month",
+  "today",
+  "next-month",
+  "event-dialog",
+  "event-form",
+  "event-title",
+  "event-date",
+  "event-calendar",
+  "event-start-time",
+  "event-end-time",
+  "event-notes",
+  "delete-event",
+  "cancel-event",
+  "close-event-dialog",
+  "ai-schedule-launcher",
+  "ai-schedule-panel",
+  "ai-schedule-title",
+  "ai-schedule-input",
+  "close-ai-schedule",
+  "analyze-ai-schedule",
+];
 
 function readCalendarPage() {
-  assert.equal(existsSync(calendarPageUrl), true, "calendar.html should exist");
-  return readFileSync(calendarPageUrl, "utf8");
+  assert.equal(existsSync(calendarPagePath), true, "calendar.html should exist");
+  return readFileSync(calendarPagePath, "utf8");
 }
 
 function readCalendarStyles() {
-  assert.equal(existsSync(calendarStylesUrl), true, "calendar.css should exist");
-  return readFileSync(calendarStylesUrl, "utf8");
+  assert.equal(existsSync(calendarStylesPath), true, "calendar.css should exist");
+  return readFileSync(calendarStylesPath, "utf8");
 }
 
 function contrastRatio(foreground, background) {
@@ -34,79 +81,67 @@ function contrastRatio(foreground, background) {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
-test("calendar page exposes the approved application structure", () => {
-  const html = readCalendarPage();
-  const requiredIds = [
-    "create-event",
-    "mini-calendar",
-    "calendar-filters",
-    "calendar-title",
-    "calendar-grid",
-    "previous-month",
-    "today",
-    "next-month",
-    "event-dialog",
-    "event-form",
-    "event-title",
-    "event-date",
-    "event-calendar",
-    "event-start-time",
-    "event-end-time",
-    "event-notes",
-    "delete-event",
-    "cancel-event",
-    "close-event-dialog",
-  ];
-
-  assert.match(html, /<aside\b/);
-  assert.match(html, /<main\b/);
-  assert.match(html, /<dialog\b/);
+test("calendar page mounts the approved application structure", () => {
+  const wrapper = mount(App);
 
   for (const id of requiredIds) {
-    assert.match(html, new RegExp(`id="${id}"`), id);
+    assert.ok(wrapper.find(`#${id}`).exists(), id);
   }
 
-  for (const calendarId of [
-    "personal",
-    "documents",
-    "medical",
-    "family",
-    "work",
-    "other",
-  ]) {
-    const matches = html.match(new RegExp(`value="${calendarId}"`, "g"));
-    assert.equal(matches?.length, 2, calendarId);
-  }
-
-  assert.match(html, /<script type="module" src="js\/app\.js"><\/script>/);
+  assert.ok(wrapper.find("aside").exists());
+  assert.ok(wrapper.find("main").exists());
+  assert.ok(wrapper.find("dialog").exists());
 });
 
-test("calendar page enables controls wired by the application", () => {
-  const html = readCalendarPage();
+test("calendar page renders each calendar category twice and enables controls", () => {
+  const wrapper = mount(App);
+  const checkboxes = wrapper.findAll("#calendar-filters input[type='checkbox']");
+  const options = wrapper.findAll("#event-calendar option");
 
-  assert.doesNotMatch(html, /<button[^>]*id="create-event"[^>]*disabled/);
-  assert.doesNotMatch(html, /<select[^>]*id="event-calendar"[^>]*disabled/);
+  assert.equal(checkboxes.length, 6);
+  assert.equal(options.length, 6);
 
-  for (const calendarId of [
-    "personal",
-    "documents",
-    "medical",
-    "family",
-    "work",
-    "other",
-  ]) {
-    assert.doesNotMatch(
-      html,
-      new RegExp(`<input[^>]*value="${calendarId}"[^>]*disabled`),
+  for (const calendarId of calendarIds) {
+    assert.ok(
+      checkboxes.some((checkbox) => checkbox.element.value === calendarId),
+      calendarId,
+    );
+    assert.ok(
+      options.some((option) => option.element.value === calendarId),
+      calendarId,
     );
   }
+
+  assert.equal(wrapper.find("#create-event").attributes("disabled"), undefined);
+  assert.equal(wrapper.find("#event-calendar").attributes("disabled"), undefined);
+
+  for (const checkbox of checkboxes) {
+    assert.equal(checkbox.attributes("disabled"), undefined);
+  }
+});
+
+test("calendar page exposes the AI schedule panel initial states", () => {
+  const wrapper = mount(App);
+
+  assert.equal(
+    wrapper.find("#ai-schedule-launcher").attributes("aria-expanded"),
+    "false",
+  );
+  assert.equal(
+    wrapper.find("#ai-schedule-panel").attributes("aria-hidden"),
+    "true",
+  );
+});
+
+test("calendar page entry loads the Vue application", () => {
+  const html = readCalendarPage();
+
+  assert.match(html, /<div id="app"><\/div>/);
+  assert.match(html, /<script type="module" src="\/src\/main\.js"><\/script>/);
 });
 
 test("calendar page loads the desktop calendar visual system", () => {
-  const html = readCalendarPage();
   const css = readCalendarStyles();
-
-  assert.match(html, /<link rel="stylesheet" href="calendar\.css" \/>/);
 
   for (const selector of [
     ".calendar-toolbar",
@@ -118,39 +153,14 @@ test("calendar page loads the desktop calendar visual system", () => {
     assert.match(css, new RegExp(selector.replace(".", "\\.")));
   }
 
-  for (const calendarId of [
-    "personal",
-    "documents",
-    "medical",
-    "family",
-    "work",
-    "other",
-  ]) {
+  for (const calendarId of calendarIds) {
     assert.match(css, new RegExp(`data-calendar-id="${calendarId}"`));
   }
 });
 
-test("calendar page exposes the AI schedule panel states", () => {
-  const html = readCalendarPage();
+test("calendar page styles the AI schedule panel states", () => {
   const css = readCalendarStyles();
-  const requiredIds = [
-    "ai-schedule-launcher",
-    "ai-schedule-panel",
-    "ai-schedule-title",
-    "ai-schedule-input",
-    "close-ai-schedule",
-    "analyze-ai-schedule",
-  ];
 
-  for (const id of requiredIds) {
-    assert.match(html, new RegExp(`id="${id}"`), id);
-  }
-
-  assert.match(
-    html,
-    /id="ai-schedule-launcher"[^>]*aria-controls="ai-schedule-panel"[^>]*aria-expanded="false"/,
-  );
-  assert.match(html, /id="ai-schedule-panel"[^>]*aria-hidden="true"/);
   assert.match(css, /\.calendar-layout\.is-ai-schedule-open/);
   assert.match(css, /220ms/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
