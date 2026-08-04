@@ -1,19 +1,45 @@
 <script setup>
 import { ref } from "vue";
+import { parseSchedule } from "../lib/ai.js";
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, required: true },
+  calendars: { type: Array, required: true },
 });
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "parsed"]);
 
 const aiScheduleInputRef = ref(null);
 const aiScheduleDraft = ref("");
+const isAnalyzing = ref(false);
+const aiScheduleError = ref("");
 
 defineExpose({
   focusInput() {
     aiScheduleInputRef.value?.focus();
   },
 });
+
+function clearError() {
+  aiScheduleError.value = "";
+}
+
+async function handleAnalyze() {
+  clearError();
+  isAnalyzing.value = true;
+
+  try {
+    const events = await parseSchedule(
+      aiScheduleDraft.value,
+      props.calendars,
+    );
+    emit("parsed", events);
+  } catch (error) {
+    aiScheduleError.value =
+      error instanceof Error ? error.message : "無法分析日程。";
+  } finally {
+    isAnalyzing.value = false;
+  }
+}
 </script>
 
 <template>
@@ -43,6 +69,21 @@ defineExpose({
       placeholder="例如：下週三下午三時看醫生"
       v-model="aiScheduleDraft"
     ></textarea>
-    <button type="button" id="analyze-ai-schedule">分析日程</button>
+    <p
+      v-if="aiScheduleError"
+      id="ai-schedule-error"
+      class="ai-schedule-error"
+      role="alert"
+    >
+      {{ aiScheduleError }}
+    </p>
+    <button
+      type="button"
+      id="analyze-ai-schedule"
+      :disabled="isAnalyzing"
+      @click="handleAnalyze"
+    >
+      {{ isAnalyzing ? "分析中…" : "分析日程" }}
+    </button>
   </section>
 </template>

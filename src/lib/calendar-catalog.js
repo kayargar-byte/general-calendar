@@ -9,7 +9,7 @@ export const DEFAULT_CALENDARS = [
   { id: "other", label: "其他", color: "#70757e" },
 ];
 
-const TAG_COLOR_PALETTE = [
+export const TAG_COLOR_PALETTE = [
   "#d63384",
   "#e85d04",
   "#2a9d8f",
@@ -108,6 +108,47 @@ export function createCalendar(label, storage) {
   saveCalendars([...calendars, calendar], storage);
 
   return calendar;
+}
+
+export function updateCalendar(id, label, color, storage) {
+  const calendars = getCalendars(storage);
+  const calendarIndex = calendars.findIndex(
+    (calendar) => calendar.id === id,
+  );
+
+  if (calendarIndex === -1) {
+    throw new Error("找不到要更新的分類。");
+  }
+
+  const name = typeof label === "string" ? label.trim() : "";
+
+  if (!name) {
+    throw new Error("分類名稱不可為空。");
+  }
+
+  if (
+    calendars.some(
+      (calendar) => calendar.id !== id && calendar.label === name,
+    )
+  ) {
+    throw new Error(`分類「${name}」已存在。`);
+  }
+
+  if (typeof color !== "string" || color.length === 0) {
+    throw new Error("分類顏色不可為空。");
+  }
+
+  const updatedCalendar = {
+    ...calendars[calendarIndex],
+    label: name,
+    color,
+  };
+
+  const nextCalendars = [...calendars];
+  nextCalendars[calendarIndex] = updatedCalendar;
+  saveCalendars(nextCalendars, storage);
+
+  return updatedCalendar;
 }
 
 export function deleteCalendar(id, storage) {

@@ -9,3 +9,4 @@ output/
 .env.*
 *.log
 ~$*
+server/config.js

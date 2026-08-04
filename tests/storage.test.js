@@ -5,7 +5,10 @@ import {
   STORAGE_KEY,
   createEvent,
   deleteEvent,
+  findConflicts,
   getEvents,
+  searchEvents,
+  seedSampleEventsIfFirstRun,
   updateEvent,
 } from "../src/lib/storage.js";
 
@@ -164,4 +167,138 @@ test("getEvents assigns legacy events to the personal calendar", () => {
   storage.setItem(STORAGE_KEY, JSON.stringify([legacyEvent]));
 
   assert.equal(getEvents(storage)[0].calendarId, "personal");
+});
+
+test("findConflicts detects overlapping events on the same date", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "既存會議",
+      startTime: "09:00",
+      endTime: "10:30",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    { date: "2026-08-15", startTime: "10:00", endTime: "11:00" },
+    null,
+    storage,
+  );
+
+  assert.equal(conflicts.length, 1);
+  assert.equal(conflicts[0].title, "既存會議");
+});
+
+test("findConflicts excludes the event being edited", () => {
+  const storage = new MemoryStorage();
+  const existing = createEvent(
+    buildEvent({
+      title: "既存會議",
+      startTime: "09:00",
+      endTime: "10:30",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    {
+      date: "2026-08-15",
+      startTime: "09:30",
+      endTime: "10:00",
+    },
+    existing.id,
+    storage,
+  );
+
+  assert.equal(conflicts.length, 0);
+});
+
+test("findConflicts returns empty when no startTime is provided", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "既存會議",
+      startTime: "09:00",
+      endTime: "10:30",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    { date: "2026-08-15", startTime: "", endTime: "" },
+    null,
+    storage,
+  );
+
+  assert.deepEqual(conflicts, []);
+});
+
+test("searchEvents matches events by title", () => {
+  const storage = new MemoryStorage();
+  createEvent(buildEvent({ title: "牙醫預約" }), storage);
+  createEvent(
+    buildEvent({ title: "工作會議", date: "2026-08-20" }),
+    storage,
+  );
+
+  const results = searchEvents("牙醫", storage);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, "牙醫預約");
+});
+
+test("searchEvents matches events by notes", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({ title: "會議", notes: "攜帶牙醫報告" }),
+    storage,
+  );
+
+  const results = searchEvents("牙醫", storage);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, "會議");
+});
+
+test("searchEvents is case-insensitive", () => {
+  const storage = new MemoryStorage();
+  createEvent(buildEvent({ title: "Meeting" }), storage);
+
+  const results = searchEvents("meeting", storage);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, "Meeting");
+});
+
+test("searchEvents returns empty array when no matches", () => {
+  const storage = new MemoryStorage();
+  createEvent(buildEvent({ title: "牙醫預約" }), storage);
+
+  const results = searchEvents("不存在的關鍵字", storage);
+
+  assert.deepEqual(results, []);
+});
+
+test("seedSampleEventsIfFirstRun seeds sample events on first run", () => {
+  const storage = new MemoryStorage();
+
+  assert.equal(seedSampleEventsIfFirstRun(storage), true);
+  assert.equal(getEvents(storage).length, 4);
+});
+
+test("seedSampleEventsIfFirstRun does not reseed when events exist", () => {
+  const storage = new MemoryStorage();
+  seedSampleEventsIfFirstRun(storage);
+
+  assert.equal(seedSampleEventsIfFirstRun(storage), false);
+  assert.equal(getEvents(storage).length, 4);
+});
+
+test("seedSampleEventsIfFirstRun keeps existing user events", () => {
+  const storage = new MemoryStorage();
+  createEvent(buildEvent(), storage);
+
+  assert.equal(seedSampleEventsIfFirstRun(storage), false);
+  assert.equal(getEvents(storage).length, 1);
 });

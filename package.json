@@ -7,7 +7,8 @@
     "test": "vitest run",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ai-proxy": "node server/server.js"
   },
   "dependencies": {
     "vue": "^3.5.40"

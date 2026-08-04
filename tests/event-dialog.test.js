@@ -24,7 +24,7 @@ test("EventDialog creates an event and emits saved", async () => {
   await wrapper.setProps({ open: true });
 
   await wrapper.find("#event-title").setValue("證件續期");
-  await wrapper.find("form").trigger("submit");
+  await wrapper.find("#event-form").trigger("submit");
 
   const events = getEvents();
   assert.equal(events.length, 1);
@@ -38,7 +38,7 @@ test("EventDialog shows the validation error and does not save", async () => {
   const wrapper = mountDialog({ pendingDate: "2026-08-15" });
   await wrapper.setProps({ open: true });
 
-  await wrapper.find("form").trigger("submit");
+  await wrapper.find("#event-form").trigger("submit");
 
   const error = wrapper.find("#event-form-error");
   assert.match(error.text(), /標題為必填/);
@@ -65,7 +65,7 @@ test("EventDialog loads and updates an existing event", async () => {
   assert.equal(wrapper.find("#event-calendar").element.value, "medical");
 
   await wrapper.find("#event-title").setValue("牙醫覆診");
-  await wrapper.find("form").trigger("submit");
+  await wrapper.find("#event-form").trigger("submit");
 
   const events = getEvents();
   assert.equal(events.length, 1);
@@ -116,6 +116,70 @@ test("EventDialog closes and emits closed on cancel", async () => {
   assert.equal(wrapper.emitted("closed")?.length, 1);
 });
 
+test("EventDialog blocks a conflicting save once, then allows forcing", async () => {
+  localStorage.clear();
+  createEvent({
+    title: "既存會議",
+    date: "2026-08-15",
+    calendarId: "work",
+    startTime: "09:00",
+    endTime: "10:30",
+    notes: "",
+  });
+
+  const wrapper = mountDialog({ pendingDate: "2026-08-15" });
+  await wrapper.setProps({ open: true });
+
+  await wrapper.find("#event-title").setValue("新會議");
+  await wrapper.find("#event-start-time").setValue("09:30");
+  await wrapper.find("#event-end-time").setValue("10:00");
+
+  await wrapper.find("#event-form").trigger("submit");
+  assert.match(wrapper.find("#event-form-error").text(), /時間衝突/);
+  assert.equal(getEvents().length, 1);
+
+  await wrapper.find("#event-form").trigger("submit");
+  assert.equal(getEvents().length, 2);
+  assert.equal(wrapper.emitted("saved")?.length, 1);
+});
+
+test("App opens the create dialog from the toolbar button", async () => {
+  localStorage.clear();
+  const wrapper = mount(App, { attachTo: document.body });
+
+  await wrapper.find("#create-event").trigger("click");
+  await nextTick();
+
+  assert.equal(wrapper.find("#event-dialog").element.open, true);
+  assert.equal(
+    wrapper.find("#event-date").element.value,
+    toDateKey(new Date()),
+  );
+
+  wrapper.unmount();
+});
+
+test("EventDialog prefills the form from an AI result", async () => {
+  localStorage.clear();
+  const wrapper = mountDialog({
+    pendingDate: "",
+    prefill: {
+      title: "看醫生",
+      date: "2026-08-06",
+      calendarId: "medical",
+      startTime: "15:00",
+      endTime: "16:00",
+      notes: "帶報告",
+    },
+  });
+  await wrapper.setProps({ open: true });
+
+  assert.equal(wrapper.find("#event-title").element.value, "看醫生");
+  assert.equal(wrapper.find("#event-date").element.value, "2026-08-06");
+  assert.equal(wrapper.find("#event-calendar").element.value, "medical");
+  assert.equal(wrapper.find("#event-start-time").element.value, "15:00");
+});
+
 test("App creates an event from the grid and restores focus", async () => {
   localStorage.clear();
   const wrapper = mount(App, { attachTo: document.body });
@@ -131,7 +195,7 @@ test("App creates an event from the grid and restores focus", async () => {
   assert.equal(wrapper.find("#event-dialog").element.open, true);
 
   await wrapper.find("#event-title").setValue("證件續期");
-  await wrapper.find("form").trigger("submit");
+  await wrapper.find("#event-form").trigger("submit");
   await flushPromises();
   await nextTick();
 

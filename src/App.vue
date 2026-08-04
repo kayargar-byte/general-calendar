@@ -1,11 +1,18 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCalendar } from "./composables/useCalendar.js";
+import { useTheme } from "./composables/useTheme.js";
+import { toDateKey } from "./lib/date-utils.js";
 import CalendarGrid from "./components/CalendarGrid.vue";
 import MiniCalendar from "./components/MiniCalendar.vue";
 import CalendarFilters from "./components/CalendarFilters.vue";
 import EventDialog from "./components/EventDialog.vue";
 import AiSchedulePanel from "./components/AiSchedulePanel.vue";
+import AiBatchDialog from "./components/AiBatchDialog.vue";
+import EventSearch from "./components/EventSearch.vue";
+import ManageDialog from "./components/ManageDialog.vue";
+import SettingsDialog from "./components/SettingsDialog.vue";
+import DatePickerPopover from "./components/DatePickerPopover.vue";
 
 const {
   monthTitle,
@@ -13,19 +20,30 @@ const {
   calendars,
   visibleCalendarIds,
   days,
+  visibleMonth,
   changeMonth,
   goToday,
+  goToDate,
+  refreshEvents,
   toggleCalendar,
   addCalendar,
   removeCalendar,
+  updateCalendarTag,
   reorderCalendars,
   toggleAiSchedule,
   openCreateEventDialog,
   openEditEventDialog,
+  navigateToEvent,
   editingEventId,
   isEventDialogOpen,
   pendingDate,
+  aiPrefill,
+  isBatchDialogOpen,
+  pendingBatchEvents,
   slideDirection,
+  handleAiParsed,
+  handleBatchConfirm,
+  handleBatchClose,
   handleEventSaved,
   handleEventDeleted,
   handleDialogClosed,
@@ -34,6 +52,29 @@ const {
 const aiScheduleLauncherRef = ref(null);
 const aiSchedulePanelRef = ref(null);
 const calendarWorkspaceRef = ref(null);
+const isManageOpen = ref(false);
+const isSettingsOpen = ref(false);
+const isDatePickerOpen = ref(false);
+const { theme, toggleTheme } = useTheme();
+
+function handleDatePickerConfirm({ year, monthIndex }) {
+  isDatePickerOpen.value = false;
+  goToDate(year, monthIndex);
+}
+
+function handleManageEditEvent(eventId) {
+  isManageOpen.value = false;
+  openEditEventDialog(eventId);
+}
+
+function handleCreateEvent() {
+  const today = new Date();
+  const isCurrentMonth =
+    today.getFullYear() === visibleMonth.value.getFullYear() &&
+    today.getMonth() === visibleMonth.value.getMonth();
+  const date = isCurrentMonth ? today : visibleMonth.value;
+  openCreateEventDialog(toDateKey(date));
+}
 
 const monthTransitionName = computed(() =>
   slideDirection.value === "prev" ? "month-slide-prev" : "month-slide-next",
@@ -127,19 +168,37 @@ onUnmounted(() => {
   <header class="calendar-toolbar">
     <h1>我的日曆</h1>
 
-    <button type="button" id="create-event">
+    <button type="button" id="create-event" @click="handleCreateEvent">
       <span aria-hidden="true">＋</span>
       新增事件
     </button>
 
-    <div class="month-controls" role="group" aria-label="月份導覽">
-      <button type="button" id="previous-month" aria-label="上個月" @click="changeMonth(-1)">
-        <span aria-hidden="true">‹</span>
+    <EventSearch :calendars="calendars" @select="navigateToEvent" />
+
+    <div class="toolbar-actions">
+      <button
+        type="button"
+        id="theme-toggle"
+        :aria-label="theme === 'dark' ? '切換至亮色模式' : '切換至暗色模式'"
+        @click="toggleTheme"
+      >
+        {{ theme === "dark" ? "☀️" : "🌙" }}
       </button>
-      <button type="button" id="today" @click="goToday">今天</button>
-      <button type="button" id="next-month" aria-label="下個月" @click="changeMonth(1)">
-        <span aria-hidden="true">›</span>
+      <button type="button" id="open-manage" @click="isManageOpen = true">
+        管理中心
       </button>
+      <button type="button" id="open-settings" @click="isSettingsOpen = true">
+        設定
+      </button>
+      <div class="month-controls" role="group" aria-label="月份導覽">
+        <button type="button" id="previous-month" aria-label="上個月" @click="changeMonth(-1)">
+          <span aria-hidden="true">‹</span>
+        </button>
+        <button type="button" id="today" @click="goToday">今天</button>
+        <button type="button" id="next-month" aria-label="下個月" @click="changeMonth(1)">
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -164,6 +223,7 @@ onUnmounted(() => {
           @toggle="toggleCalendar"
           @add-tag="addCalendar"
           @remove-tag="removeCalendar"
+          @update-tag="updateCalendarTag"
           @reorder-tags="reorderCalendars"
         />
       </div>
@@ -171,6 +231,8 @@ onUnmounted(() => {
       <AiSchedulePanel
         ref="aiSchedulePanelRef"
         :open="isAiScheduleOpen"
+        :calendars="calendars"
+        @parsed="handleAiParsed"
         @close="toggleAiSchedule"
       />
     </aside>
@@ -178,7 +240,23 @@ onUnmounted(() => {
     <main class="calendar-workspace" ref="calendarWorkspaceRef">
       <Transition :name="monthTransitionName" mode="out-in">
         <section class="calendar" :key="monthTitle" aria-labelledby="calendar-title">
-          <h2 id="calendar-title">{{ monthTitle }}</h2>
+          <div class="calendar-title-wrap">
+            <button
+              type="button"
+              id="calendar-title"
+              aria-haspopup="true"
+              :aria-expanded="String(isDatePickerOpen)"
+              @click="isDatePickerOpen = !isDatePickerOpen"
+            >
+              {{ monthTitle }}
+            </button>
+            <DatePickerPopover
+              v-if="isDatePickerOpen"
+              :visible-month="visibleMonth"
+              @confirm="handleDatePickerConfirm"
+              @close="isDatePickerOpen = false"
+            />
+          </div>
           <div class="weekdays" aria-hidden="true">
             <span>一</span>
             <span>二</span>
@@ -222,9 +300,30 @@ onUnmounted(() => {
     :open="isEventDialogOpen"
     :editing-event-id="editingEventId"
     :pending-date="pendingDate"
+    :prefill="aiPrefill"
     :calendars="calendars"
     @saved="handleEventSaved"
     @deleted="handleEventDeleted"
     @closed="handleDialogClosed"
   />
+
+  <AiBatchDialog
+    :open="isBatchDialogOpen"
+    :events="pendingBatchEvents"
+    :calendars="calendars"
+    @confirm="handleBatchConfirm"
+    @close="handleBatchClose"
+  />
+
+  <ManageDialog
+    :open="isManageOpen"
+    :calendars="calendars"
+    @close="isManageOpen = false"
+    @edit-event="handleManageEditEvent"
+    @update-tag="updateCalendarTag"
+    @remove-tag="removeCalendar"
+    @changed="refreshEvents"
+  />
+
+  <SettingsDialog :open="isSettingsOpen" @close="isSettingsOpen = false" />
 </template>

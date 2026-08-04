@@ -173,3 +173,92 @@ test("App removes a tag and reassigns its events to other", async () => {
 
   wrapper.unmount();
 });
+
+test("opens the tag edit dialog prefilled from the row", async () => {
+  const wrapper = mount(CalendarFilters, {
+    props: { calendars, visibleCalendarIds },
+  });
+
+  await wrapper
+    .find('.edit-calendar-tag[data-calendar-id="medical"]')
+    .trigger("click");
+  await nextTick();
+
+  const dialog = wrapper.find("#tag-edit-dialog");
+  assert.equal(dialog.element.open, true);
+  assert.equal(wrapper.find("#tag-edit-name").element.value, "醫療");
+
+  wrapper.unmount();
+});
+
+test("emits update-tag with the edited label and color", async () => {
+  const wrapper = mount(CalendarFilters, {
+    props: { calendars, visibleCalendarIds },
+  });
+
+  await wrapper
+    .find('.edit-calendar-tag[data-calendar-id="medical"]')
+    .trigger("click");
+  await nextTick();
+
+  await wrapper.find("#tag-edit-name").setValue("門診");
+  await wrapper.findAll(".tag-color-swatch").at(2).trigger("click");
+  await wrapper.find("#tag-edit-form").trigger("submit");
+
+  const emitted = wrapper.emitted("update-tag")?.[0];
+  assert.equal(emitted[0], "medical");
+  assert.equal(emitted[1], "門診");
+  assert.equal(typeof emitted[2], "string");
+
+  wrapper.unmount();
+});
+
+test("shows an error for duplicate labels without emitting", async () => {
+  const wrapper = mount(CalendarFilters, {
+    props: { calendars, visibleCalendarIds },
+  });
+
+  await wrapper
+    .find('.edit-calendar-tag[data-calendar-id="medical"]')
+    .trigger("click");
+  await nextTick();
+
+  await wrapper.find("#tag-edit-name").setValue("個人");
+  await wrapper.find("#tag-edit-form").trigger("submit");
+
+  assert.match(wrapper.find("#tag-edit-error").text(), /已存在/);
+  assert.equal(wrapper.emitted("update-tag"), undefined);
+
+  wrapper.unmount();
+});
+
+test("App renames a tag and persists it", async () => {
+  localStorage.clear();
+  const wrapper = mount(App, { attachTo: document.body });
+
+  await wrapper
+    .find('.edit-calendar-tag[data-calendar-id="medical"]')
+    .trigger("click");
+  await nextTick();
+
+  await wrapper.find("#tag-edit-name").setValue("門診");
+  await wrapper.find("#tag-edit-form").trigger("submit");
+  await nextTick();
+
+  const labels = () =>
+    wrapper
+      .findAll("#calendar-filters label")
+      .map((label) => label.find(".tag-row-label").text());
+
+  assert.deepEqual(labels(), ["個人", "證件續期", "門診", "家庭", "工作", "其他"]);
+
+  const persisted = JSON.parse(
+    localStorage.getItem("general-calendar.calendars.v1"),
+  );
+  assert.equal(
+    persisted.find((calendar) => calendar.id === "medical").label,
+    "門診",
+  );
+
+  wrapper.unmount();
+});

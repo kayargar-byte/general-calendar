@@ -7,6 +7,7 @@ import {
 import {
   createEvent,
   deleteEvent,
+  findConflicts,
   getEvents,
   updateEvent,
 } from "../lib/storage.js";
@@ -15,6 +16,7 @@ const props = defineProps({
   open: { type: Boolean, required: true },
   editingEventId: { type: String, default: null },
   pendingDate: { type: String, default: "" },
+  prefill: { type: Object, default: null },
   calendars: { type: Array, default: () => getCalendars() },
 });
 const emit = defineEmits(["saved", "deleted", "closed"]);
@@ -30,6 +32,7 @@ const endTime = ref("");
 const notes = ref("");
 const formErrorHidden = ref(true);
 const formErrorMessage = ref("");
+const conflictConfirmed = ref(false);
 
 function clearFormError() {
   formErrorMessage.value = "";
@@ -51,6 +54,7 @@ function populateForm() {
     : null;
 
   clearFormError();
+  conflictConfirmed.value = false;
 
   if (event) {
     title.value = event.title;
@@ -59,6 +63,13 @@ function populateForm() {
     startTime.value = event.startTime;
     endTime.value = event.endTime;
     notes.value = event.notes;
+  } else if (props.prefill) {
+    title.value = props.prefill.title;
+    date.value = props.prefill.date;
+    calendarId.value = props.prefill.calendarId;
+    startTime.value = props.prefill.startTime;
+    endTime.value = props.prefill.endTime;
+    notes.value = props.prefill.notes;
   } else {
     title.value = "";
     date.value = props.pendingDate;
@@ -112,6 +123,24 @@ function handleSubmit() {
       endTime: endTime.value,
       notes: notes.value,
     };
+
+    if (!conflictConfirmed.value) {
+      const conflicts = findConflicts(input, props.editingEventId);
+
+      if (conflicts.length > 0) {
+        const conflictList = conflicts
+          .map(
+            (conflict) =>
+              `「${conflict.title}」${conflict.startTime ? ` ${conflict.startTime}` : ""}`,
+          )
+          .join("、");
+        showFormError(
+          new Error(`時間衝突：${conflictList}。再次儲存以強制新增。`),
+        );
+        conflictConfirmed.value = true;
+        return;
+      }
+    }
 
     if (props.editingEventId) {
       const updated = updateEvent(props.editingEventId, input);

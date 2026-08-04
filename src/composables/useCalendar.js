@@ -6,8 +6,9 @@ import {
   deleteCalendar,
   getCalendars,
   saveCalendars,
+  updateCalendar,
 } from "../lib/calendar-catalog.js";
-import { getEvents, reassignEventsCalendar } from "../lib/storage.js";
+import { createEvent, getEvents, reassignEventsCalendar } from "../lib/storage.js";
 
 export function useCalendar() {
   const today = new Date();
@@ -21,6 +22,9 @@ export function useCalendar() {
   const eventsVersion = ref(0);
   const returnFocus = ref(null);
   const slideDirection = ref("next");
+  const isBatchDialogOpen = ref(false);
+  const pendingBatchEvents = ref([]);
+  const aiPrefill = ref(null);
 
   const calendars = ref(getCalendars());
   const visibleCalendarIds = ref(
@@ -78,6 +82,11 @@ export function useCalendar() {
 
     eventsVersion.value++;
     return true;
+  }
+
+  function updateCalendarTag(id, label, color) {
+    updateCalendar(id, label, color);
+    calendars.value = getCalendars();
   }
 
   function reorderCalendars(fromId, toId) {
@@ -142,12 +151,23 @@ export function useCalendar() {
     visibleMonth.value = targetMonth;
   }
 
+  function goToDate(year, monthIndex) {
+    const target = new Date(year, monthIndex, 1);
+    slideDirection.value = target > visibleMonth.value ? "next" : "prev";
+    visibleMonth.value = target;
+  }
+
+  function refreshEvents() {
+    eventsVersion.value++;
+  }
+
   function toggleAiSchedule() {
     isAiScheduleOpen.value = !isAiScheduleOpen.value;
   }
 
   function openCreateEventDialog(dateKey) {
     editingEventId.value = null;
+    aiPrefill.value = null;
     pendingDate.value = dateKey;
     returnFocus.value = {
       type: "date",
@@ -167,12 +187,69 @@ export function useCalendar() {
     }
 
     editingEventId.value = event.id;
+    aiPrefill.value = null;
     returnFocus.value = {
       type: "event",
       value: event.id,
       fallbackDate: event.date,
     };
     isEventDialogOpen.value = true;
+  }
+
+  function navigateToEvent(event) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(event.date);
+
+    if (!match) {
+      return;
+    }
+
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const target = new Date(year, monthIndex, 1);
+    slideDirection.value = target > visibleMonth.value ? "next" : "prev";
+    visibleMonth.value = target;
+    openEditEventDialog(event.id);
+  }
+
+  function openCreateEventFromAi(event) {
+    editingEventId.value = null;
+    aiPrefill.value = event;
+    pendingDate.value = event.date;
+    returnFocus.value = {
+      type: "date",
+      value: event.date,
+      fallbackDate: event.date,
+    };
+    isEventDialogOpen.value = true;
+  }
+
+  function handleAiParsed(events) {
+    isAiScheduleOpen.value = false;
+
+    if (events.length === 1) {
+      openCreateEventFromAi(events[0]);
+      return;
+    }
+
+    pendingBatchEvents.value = events;
+    isBatchDialogOpen.value = true;
+  }
+
+  function handleBatchConfirm() {
+    for (const event of pendingBatchEvents.value) {
+      try {
+        createEvent(event);
+      } catch {}
+    }
+
+    isBatchDialogOpen.value = false;
+    pendingBatchEvents.value = [];
+    eventsVersion.value++;
+  }
+
+  function handleBatchClose() {
+    isBatchDialogOpen.value = false;
+    pendingBatchEvents.value = [];
   }
 
   function handleEventSaved() {
@@ -195,6 +272,7 @@ export function useCalendar() {
 
   function handleDialogClosed() {
     isEventDialogOpen.value = false;
+    aiPrefill.value = null;
     restoreFocus();
   }
 
@@ -231,6 +309,9 @@ export function useCalendar() {
     isAiScheduleOpen,
     isEventDialogOpen,
     pendingDate,
+    aiPrefill,
+    isBatchDialogOpen,
+    pendingBatchEvents,
     calendars,
     visibleCalendarIds,
     slideDirection,
@@ -238,13 +319,20 @@ export function useCalendar() {
     days,
     changeMonth,
     goToday,
+    goToDate,
+    refreshEvents,
     toggleCalendar,
     addCalendar,
     removeCalendar,
+    updateCalendarTag,
     reorderCalendars,
     toggleAiSchedule,
+    handleAiParsed,
+    handleBatchConfirm,
+    handleBatchClose,
     openCreateEventDialog,
     openEditEventDialog,
+    navigateToEvent,
     handleEventSaved,
     handleEventDeleted,
     handleDialogClosed,

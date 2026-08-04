@@ -1,11 +1,19 @@
 <script setup>
 import { nextTick, ref, watch } from "vue";
+import { TAG_COLOR_PALETTE } from "../lib/calendar-catalog.js";
+import TagEditDialog from "./TagEditDialog.vue";
 
 const props = defineProps({
   calendars: { type: Array, required: true },
   visibleCalendarIds: { type: Set, required: true },
 });
-const emit = defineEmits(["toggle", "add-tag", "remove-tag", "reorder-tags"]);
+const emit = defineEmits([
+  "toggle",
+  "add-tag",
+  "remove-tag",
+  "reorder-tags",
+  "update-tag",
+]);
 
 const addingTag = ref(false);
 const newTagName = ref("");
@@ -13,6 +21,18 @@ const addError = ref("");
 const newTagInputRef = ref(null);
 const draggedTagId = ref(null);
 const dropTargetId = ref(null);
+const editingTag = ref(null);
+const isTagEditOpen = ref(false);
+
+function openEditTag(calendar) {
+  editingTag.value = calendar;
+  isTagEditOpen.value = true;
+}
+
+function handleTagSaved({ id, label, color }) {
+  emit("update-tag", id, label, color);
+  isTagEditOpen.value = false;
+}
 
 function onDragStart(id) {
   draggedTagId.value = id;
@@ -146,17 +166,37 @@ function cancelAddTag() {
       />
       <span class="tag-row-content">
         <span class="tag-row-label">{{ calendar.label }}</span>
-        <button
-          type="button"
-          class="remove-calendar-tag"
-          :data-calendar-id="calendar.id"
-          :disabled="calendars.length <= 1"
-          :aria-label="`刪除分類 ${calendar.label}`"
-          @click.stop="emit('remove-tag', calendar.id)"
-        >
-          ×
-        </button>
+        <span class="tag-row-actions">
+          <button
+            type="button"
+            class="edit-calendar-tag"
+            :data-calendar-id="calendar.id"
+            :aria-label="`編輯分類 ${calendar.label}`"
+            @click.stop="openEditTag(calendar)"
+          >
+            編輯
+          </button>
+          <button
+            type="button"
+            class="remove-calendar-tag"
+            :data-calendar-id="calendar.id"
+            :disabled="calendars.length <= 1"
+            :aria-label="`刪除分類 ${calendar.label}`"
+            @click.stop="emit('remove-tag', calendar.id)"
+          >
+            ×
+          </button>
+        </span>
       </span>
     </label>
   </fieldset>
+
+  <TagEditDialog
+    :open="isTagEditOpen"
+    :tag="editingTag"
+    :calendars="calendars"
+    :colors="TAG_COLOR_PALETTE"
+    @save="handleTagSaved"
+    @close="isTagEditOpen = false"
+  />
 </template>
