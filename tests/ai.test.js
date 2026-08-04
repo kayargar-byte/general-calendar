@@ -138,10 +138,10 @@ test("normalizeParsedEvents falls back on invalid fields", () => {
   assert.equal(events[1].title, "會議");
 });
 
-function mockDocumentOkResponse(events) {
+function mockDocumentOkResponse(events, extractedText = "") {
   return {
     ok: true,
-    json: async () => ({ events }),
+    json: async () => ({ events, extractedText }),
   };
 }
 
@@ -151,28 +151,32 @@ test("analyzeDocument sends the proxy key and returns normalized events with quo
     "fetch",
     vi.fn(async (url, options) => {
       requestHeaders = options.headers;
-      return mockDocumentOkResponse([
-        {
-          title: "覆診",
-          date: "2026-08-06",
-          startTime: "15:00",
-          endTime: "16:00",
-          calendarId: "medical",
-          notes: "",
-          quote: "下周三下午三時在衛生局覆診",
-        },
-      ]);
+      return mockDocumentOkResponse(
+        [
+          {
+            title: "覆診",
+            date: "2026-08-06",
+            startTime: "15:00",
+            endTime: "16:00",
+            calendarId: "medical",
+            notes: "",
+            quote: "下周三下午三時在衛生局覆診",
+          },
+        ],
+        "範例原文",
+      );
     }),
   );
 
   const file = new File(["content"], "sample.docx", {
     type: "application/pdf",
   });
-  const events = await analyzeDocument(file, CALENDARS);
+  const { events, extractedText } = await analyzeDocument(file, CALENDARS);
 
   assert.equal(events.length, 1);
   assert.equal(events[0].title, "覆診");
   assert.equal(events[0].quote, "下周三下午三時在衛生局覆診");
+  assert.equal(extractedText, "範例原文");
   assert.equal(requestHeaders["X-Proxy-Key"], "change-me-0f3c9a");
 });
 

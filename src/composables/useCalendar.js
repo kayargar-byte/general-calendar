@@ -20,8 +20,11 @@ import {
   createDocument,
   deleteDocument,
   deleteDocumentBlob,
+  deleteDocumentText,
+  getDocument,
   getLastImport,
   saveDocumentBlob,
+  saveDocumentText,
   setLastImport,
 } from "../lib/document-store.js";
 
@@ -302,7 +305,10 @@ export function useCalendar() {
     importBannerOpen.value = false;
 
     try {
-      const events = await analyzeDocument(file, calendars.value);
+      const { events, extractedText } = await analyzeDocument(
+        file,
+        calendars.value,
+      );
       const docId = crypto.randomUUID();
       const importedEvents = [];
 
@@ -329,12 +335,21 @@ export function useCalendar() {
         name: typeof file.name === "string" ? file.name : "",
         mimeType: typeof file.type === "string" ? file.type : "",
         size: file.size ?? 0,
+        hasText: typeof extractedText === "string" && extractedText !== "",
       });
 
       try {
         await saveDocumentBlob(docId, file);
       } catch {
         // 原檔存儲失敗不阻斷事件匯入（檢視原檔為後續功能）
+      }
+
+      if (extractedText) {
+        try {
+          await saveDocumentText(docId, extractedText);
+        } catch {
+          // 統一文本存儲失敗不阻斷事件匯入（檢視原文為後續功能）
+        }
       }
 
       setLastImport(docId);
@@ -351,14 +366,22 @@ export function useCalendar() {
     }
   }
 
-  async function undoLastImport() {
-    const last = getLastImport();
-
-    if (!last) {
+  // 刪除單一文檔及其全部關聯事件、原檔 blob 與統一文本；供「撤銷上次匯入」
+  // 與管理中心「刪除文件」共用（見計劃步驟 3）。
+  async function removeDocument(docId) {
+    if (typeof docId !== "string" || !docId) {
       return false;
     }
 
-    const docId = last.docId;
+    const hasDocument = getDocument(docId) !== null;
+    const hasEvents = getEvents().some(
+      (event) => event.sourceDocId === docId,
+    );
+
+    if (!hasDocument && !hasEvents) {
+      return false;
+    }
+
     const docEvents = getEvents().filter(
       (event) => event.sourceDocId === docId,
     );
@@ -369,11 +392,27 @@ export function useCalendar() {
 
     deleteDocument(docId);
     await deleteDocumentBlob(docId);
-    clearLastImport();
+    await deleteDocumentText(docId);
+
+    if (getLastImport()?.docId === docId) {
+      clearLastImport();
+    }
+
+    return true;
+  }
+
+  async function undoLastImport() {
+    const last = getLastImport();
+
+    if (!last) {
+      return false;
+    }
+
+    const removed = await removeDocument(last.docId);
     importBannerOpen.value = false;
     importError.value = "";
     eventsVersion.value++;
-    return true;
+    return removed;
   }
 
   function closeImportBanner() {
@@ -448,6 +487,7 @@ export function useCalendar() {
     importDocName,
     importDocument,
     undoLastImport,
+    removeDocument,
     closeImportBanner,
   };
 }

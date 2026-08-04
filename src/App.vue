@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCalendar } from "./composables/useCalendar.js";
 import { useTheme } from "./composables/useTheme.js";
 import { toDateKey } from "./lib/date-utils.js";
+import { getEvents } from "./lib/storage.js";
 import CalendarGrid from "./components/CalendarGrid.vue";
 import MiniCalendar from "./components/MiniCalendar.vue";
 import CalendarFilters from "./components/CalendarFilters.vue";
@@ -75,6 +76,15 @@ function handleDatePickerConfirm({ year, monthIndex }) {
 function handleManageEditEvent(eventId) {
   isManageOpen.value = false;
   openEditEventDialog(eventId);
+}
+
+function handleJumpToEvent(eventId) {
+  isManageOpen.value = false;
+  const event = getEvents().find((item) => item.id === eventId);
+
+  if (event) {
+    navigateToEvent(event);
+  }
 }
 
 function handleCreateEvent() {
@@ -343,6 +353,7 @@ onUnmounted(() => {
     @edit-event="handleManageEditEvent"
     @update-tag="updateCalendarTag"
     @remove-tag="removeCalendar"
+    @jump-to-event="handleJumpToEvent"
     @changed="refreshEvents"
   />
 

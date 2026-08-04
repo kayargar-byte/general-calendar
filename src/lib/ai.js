@@ -308,5 +308,9 @@ export async function analyzeDocument(file, calendars) {
     throw new Error("未能從文檔中解析出任何事件，請檢查文檔內容。");
   }
 
-  return events;
+  return {
+    events,
+    extractedText:
+      typeof data?.extractedText === "string" ? data.extractedText : "",
+  };
 }

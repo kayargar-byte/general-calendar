@@ -166,7 +166,7 @@ async function handleDocumentAnalyze(req, res) {
 
   try {
     assertFileSize(buffer.length);
-    const events = await analyzeDocument({
+    const { events, extractedText } = await analyzeDocument({
       mimeType,
       filename,
       buffer,
@@ -174,7 +174,9 @@ async function handleDocumentAnalyze(req, res) {
       aiConfig: AI_CONFIG,
     });
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ events, docName: filename, mimeType }));
+    res.end(
+      JSON.stringify({ events, extractedText, docName: filename, mimeType }),
+    );
   } catch (err) {
     const status =
       err?.code === "FILE_TOO_LARGE"

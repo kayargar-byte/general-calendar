@@ -7,10 +7,14 @@ import {
   createDocument,
   deleteDocument,
   deleteDocumentBlob,
+  deleteDocumentText,
   getDocument,
+  getDocumentBlob,
   getDocuments,
+  getDocumentText,
   getLastImport,
   saveDocumentBlob,
+  saveDocumentText,
   setLastImport,
 } from "../src/lib/document-store.js";
 
@@ -31,6 +35,7 @@ class MemoryStorage {
 }
 
 function installFakeIndexedDB() {
+  const store = new Map();
   const calls = { put: [], delete: [] };
   const fakeDb = {
     objectStoreNames: { contains: () => true },
@@ -39,8 +44,22 @@ function installFakeIndexedDB() {
     transaction: () => {
       const transaction = {
         objectStore: () => ({
-          put: (value, key) => calls.put.push({ value, key }),
-          delete: (key) => calls.delete.push(key),
+          put: (value, key) => {
+            calls.put.push({ value, key });
+            store.set(key, value);
+          },
+          delete: (key) => {
+            calls.delete.push(key);
+            store.delete(key);
+          },
+          get: (key) => {
+            const request = {};
+            queueMicrotask(() => {
+              request.result = store.get(key) ?? null;
+              request.onsuccess?.();
+            });
+            return request;
+          },
         }),
       };
       queueMicrotask(() => transaction.oncomplete?.());
@@ -105,6 +124,55 @@ test("deleteDocumentBlob removes the blob by id", async () => {
   await deleteDocumentBlob("doc-1");
 
   assert.deepEqual(calls.delete, ["doc-1"]);
+});
+
+test("getDocumentBlob reads the stored blob", async () => {
+  installFakeIndexedDB();
+  const blob = new Blob(["abc"]);
+
+  await saveDocumentBlob("doc-1", blob);
+  const read = await getDocumentBlob("doc-1");
+
+  assert.equal(read, blob);
+});
+
+test("getDocumentBlob returns null for a missing key", async () => {
+  installFakeIndexedDB();
+
+  assert.equal(await getDocumentBlob("doc-1"), null);
+});
+
+test("document text round-trips under a text: prefixed key", async () => {
+  const calls = installFakeIndexedDB();
+
+  await saveDocumentText("doc-1", "原文內容");
+
+  assert.equal(calls.put[0].key, "text:doc-1");
+  assert.equal(await getDocumentText("doc-1"), "原文內容");
+  assert.equal(await getDocumentText("missing"), null);
+
+  await deleteDocumentText("doc-1");
+
+  assert.deepEqual(calls.delete, ["text:doc-1"]);
+  assert.equal(await getDocumentText("doc-1"), null);
+});
+
+test("createDocument records hasText when provided", () => {
+  const storage = new MemoryStorage();
+
+  const record = createDocument(
+    {
+      id: "doc-2",
+      name: "a.pdf",
+      mimeType: "application/pdf",
+      size: 5,
+      hasText: true,
+    },
+    storage,
+  );
+
+  assert.equal(record.hasText, true);
+  assert.equal(getDocument("doc-2", storage).hasText, true);
 });
 
 test("last-import pointer round-trips and clears", () => {

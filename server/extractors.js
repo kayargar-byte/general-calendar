@@ -272,7 +272,8 @@ export async function analyzeDocument({ mimeType, filename, buffer, calendars, a
       });
     }
 
-    return events;
+    // 圖片路徑無統一文本，檢視原檔走影像顯示。
+    return { events, extractedText: "" };
   }
 
   let text = "";
@@ -320,5 +321,6 @@ export async function analyzeDocument({ mimeType, filename, buffer, calendars, a
     });
   }
 
-  return events;
+  // 規整文本隨事件一併返回，供前端存檔後以原文型式檢視（見計劃步驟 2）。
+  return { events, extractedText: unified };
 }

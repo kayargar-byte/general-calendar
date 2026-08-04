@@ -1,7 +1,10 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import { TAG_COLOR_PALETTE } from "../lib/calendar-catalog.js";
+import { getDocuments } from "../lib/document-store.js";
 import { deleteEvent, getEvents } from "../lib/storage.js";
+import { useCalendar } from "../composables/useCalendar.js";
+import DocumentViewDialog from "./DocumentViewDialog.vue";
 import TagEditDialog from "./TagEditDialog.vue";
 
 const props = defineProps({
@@ -13,24 +16,58 @@ const emit = defineEmits([
   "edit-event",
   "update-tag",
   "remove-tag",
+  "jump-to-event",
   "changed",
 ]);
 
 const dialogRef = ref(null);
 const activeTab = ref("events");
 const events = ref([]);
+const documents = ref([]);
 const editingTag = ref(null);
 const isTagEditOpen = ref(false);
+const viewDocId = ref("");
+const isDocumentViewOpen = ref(false);
+const { removeDocument } = useCalendar();
 
 function loadEvents() {
   events.value = getEvents();
 }
 
+function loadDocuments() {
+  documents.value = getDocuments();
+}
+
 function showDialog() {
   if (dialogRef.value && !dialogRef.value.open) {
     loadEvents();
+    loadDocuments();
     dialogRef.value.showModal();
   }
+}
+
+function docEventCount(docId) {
+  return events.value.filter((event) => event.sourceDocId === docId).length;
+}
+
+function openDocumentView(docId) {
+  viewDocId.value = docId;
+  isDocumentViewOpen.value = true;
+}
+
+async function handleRemoveDocument(doc) {
+  if (!window.confirm(`確定要刪除文件「${doc.name}」及其所有事件嗎？`)) {
+    return;
+  }
+
+  await removeDocument(doc.id);
+  loadDocuments();
+  emit("changed");
+}
+
+function handleDocumentJump(eventId) {
+  isDocumentViewOpen.value = false;
+  emit("jump-to-event", eventId);
 }
 
 function closeDialog() {
@@ -155,6 +192,16 @@ onMounted(() => {
       >
         分類
       </button>
+      <button
+        type="button"
+        id="manage-tab-documents"
+        class="manage-tab"
+        :class="{ 'is-active': activeTab === 'documents' }"
+        :aria-selected="String(activeTab === 'documents')"
+        @click="switchTab('documents')"
+      >
+        文件
+      </button>
     </div>
 
     <div v-if="activeTab === 'events'" id="manage-events-panel">
@@ -188,7 +235,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else id="manage-tags-panel">
+    <div v-else-if="activeTab === 'tags'" id="manage-tags-panel">
       <p v-if="calendars.length === 0" class="manage-empty">沒有分類。</p>
       <div
         v-for="calendar in calendars"
@@ -220,6 +267,36 @@ onMounted(() => {
       </div>
     </div>
 
+    <div v-else id="manage-documents-panel">
+      <p v-if="documents.length === 0" class="manage-empty">沒有文件。</p>
+      <div
+        v-for="doc in documents"
+        :key="doc.id"
+        class="manage-row manage-doc-row"
+        :title="`雙擊檢視「${doc.name}」`"
+        @dblclick="openDocumentView(doc.id)"
+      >
+        <span class="manage-row-title">{{ doc.name }}</span>
+        <span class="manage-row-count">{{ docEventCount(doc.id) }} 筆</span>
+        <span class="manage-row-actions">
+          <button
+            type="button"
+            class="manage-action-button"
+            @click="openDocumentView(doc.id)"
+          >
+            檢視
+          </button>
+          <button
+            type="button"
+            class="manage-action-button is-danger"
+            @click="handleRemoveDocument(doc)"
+          >
+            刪除
+          </button>
+        </span>
+      </div>
+    </div>
+
     <footer class="dialog-actions">
       <div></div>
       <div>
@@ -236,6 +313,13 @@ onMounted(() => {
       :colors="TAG_COLOR_PALETTE"
       @save="handleTagSaved"
       @close="isTagEditOpen = false"
+    />
+
+    <DocumentViewDialog
+      :open="isDocumentViewOpen"
+      :doc-id="viewDocId"
+      @close="isDocumentViewOpen = false"
+      @jump="handleDocumentJump"
     />
   </dialog>
 </template>

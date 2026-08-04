@@ -49,7 +49,7 @@ function saveDocuments(documents, storage) {
 }
 
 export function createDocument(
-  { id, name, mimeType, size, blobKey = id, importedAt },
+  { id, name, mimeType, size, blobKey = id, importedAt, hasText },
   storage,
 ) {
   const record = {
@@ -58,6 +58,7 @@ export function createDocument(
     mimeType,
     size,
     blobKey,
+    hasText: hasText === true,
     importedAt:
       typeof importedAt === "string"
         ? importedAt
@@ -131,6 +132,75 @@ export async function deleteDocumentBlob(id) {
       reject(transaction.error);
     };
   });
+}
+
+// 原檔 blob 的讀取與統一文本（docx/xlsx/pdf 規整後）的存取：共用同一 store，
+// 文本 key 加 text: 前綴，文本本體不入 localStorage 紀錄（長文檔有容量風險）。
+async function readBlobEntry(key) {
+  const db = await openBlobDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(BLOB_STORE, "readonly");
+    const request = transaction.objectStore(BLOB_STORE).get(key);
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result ?? null);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+async function writeBlobEntry(key, value) {
+  const db = await openBlobDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(BLOB_STORE, "readwrite");
+    transaction.objectStore(BLOB_STORE).put(value, key);
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+async function deleteBlobEntry(key) {
+  const db = await openBlobDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(BLOB_STORE, "readwrite");
+    transaction.objectStore(BLOB_STORE).delete(key);
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+export async function getDocumentBlob(id) {
+  return readBlobEntry(id);
+}
+
+export async function saveDocumentText(id, text) {
+  await writeBlobEntry(`text:${id}`, text);
+}
+
+export async function getDocumentText(id) {
+  return readBlobEntry(`text:${id}`);
+}
+
+export async function deleteDocumentText(id) {
+  await deleteBlobEntry(`text:${id}`);
 }
 
 export const LAST_IMPORT_KEY = "general-calendar.imports.last.v1";

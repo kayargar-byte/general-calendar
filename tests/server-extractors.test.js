@@ -70,7 +70,7 @@ test("analyzeDocument extracts events from a real DOCX with quotes", async () =>
     ),
   );
 
-  const events = await analyzeDocument({
+  const { events, extractedText } = await analyzeDocument({
     mimeType: DOCX_MIME,
     filename: "sample.docx",
     buffer: loadFixture("sample.docx"),
@@ -81,6 +81,7 @@ test("analyzeDocument extracts events from a real DOCX with quotes", async () =>
   assert.equal(events.length, 1);
   assert.equal(events[0].title, "覆診");
   assert.equal(events[0].quote, "下周三下午三時在衛生局覆診");
+  assert.match(extractedText, /下周三下午三時在衛生局覆診/);
 });
 
 test("analyzeDocument treats a real XLSX as row-based events", async () => {
@@ -96,7 +97,7 @@ test("analyzeDocument treats a real XLSX as row-based events", async () => {
     }),
   );
 
-  const events = await analyzeDocument({
+  const { events, extractedText } = await analyzeDocument({
     mimeType: XLSX_MIME,
     filename: "sample.xlsx",
     buffer: loadFixture("sample.xlsx"),
@@ -107,6 +108,7 @@ test("analyzeDocument treats a real XLSX as row-based events", async () => {
   assert.equal(events.length, 1);
   assert.equal(events[0].quote, "title: 覆診 | date: 2026-08-06");
   assert.match(requestBody.system, /Excel 表格/);
+  assert.match(extractedText, /覆診/);
 });
 
 test("analyzeDocument extracts events from a digital PDF", async () => {
@@ -127,7 +129,7 @@ test("analyzeDocument extracts events from a digital PDF", async () => {
     ),
   );
 
-  const events = await analyzeDocument({
+  const { events, extractedText } = await analyzeDocument({
     mimeType: "application/pdf",
     filename: "sample.pdf",
     buffer: Buffer.from("fake pdf bytes"),
@@ -137,6 +139,7 @@ test("analyzeDocument extracts events from a digital PDF", async () => {
 
   assert.equal(events.length, 1);
   assert.equal(events[0].title, "覆診");
+  assert.match(extractedText, /Meeting on 2026-08-15/);
 });
 
 test("analyzeDocument rejects a scanned PDF with SCANNED_PDF", async () => {
@@ -177,7 +180,7 @@ test("analyzeDocument sends images to the vision endpoint with a data URI", asyn
     }),
   );
 
-  const events = await analyzeDocument({
+  const { events, extractedText } = await analyzeDocument({
     mimeType: "image/png",
     filename: "sample.png",
     buffer: Buffer.from("fake png bytes"),
@@ -187,6 +190,7 @@ test("analyzeDocument sends images to the vision endpoint with a data URI", asyn
 
   assert.equal(events.length, 1);
   assert.equal(events[0].calendarId, "work");
+  assert.equal(extractedText, "");
 });
 
 test("analyzeDocument throws NO_EVENTS when AI returns an empty list", async () => {

@@ -73,8 +73,12 @@ function makeEvents() {
   ];
 }
 
+function makeAnalysisResult(events = makeEvents(), extractedText = "統一文本") {
+  return { events, extractedText };
+}
+
 test("importDocument writes events with source fields and sets the last-import pointer", async () => {
-  analyzeDocument.mockResolvedValue(makeEvents());
+  analyzeDocument.mockResolvedValue(makeAnalysisResult());
   installFakeIndexedDB();
   const { importDocument, importCount, importBannerOpen, importDocName } =
     useCalendar();
@@ -106,7 +110,7 @@ test("importDocument reports an error when analysis fails", async () => {
 });
 
 test("importDocument does not write events when the analysis yields none", async () => {
-  analyzeDocument.mockResolvedValue([]);
+  analyzeDocument.mockResolvedValue({ events: [], extractedText: "" });
   installFakeIndexedDB();
   const { importDocument, importError, importCount } = useCalendar();
 
@@ -117,8 +121,8 @@ test("importDocument does not write events when the analysis yields none", async
   assert.equal(getEvents().length, 0);
 });
 
-test("undoLastImport removes events, document record, and blob", async () => {
-  analyzeDocument.mockResolvedValue(makeEvents());
+test("undoLastImport removes events, document record, blob, and text", async () => {
+  analyzeDocument.mockResolvedValue(makeAnalysisResult());
   const calls = installFakeIndexedDB();
   const { importDocument, undoLastImport, importBannerOpen } = useCalendar();
 
@@ -131,18 +135,22 @@ test("undoLastImport removes events, document record, and blob", async () => {
   assert.equal(getDocuments().length, 0);
   assert.equal(getLastImport(), null);
   assert.equal(importBannerOpen.value, false);
-  assert.deepEqual(calls.delete, [docId]);
+  assert.deepEqual(calls.delete, [docId, "text:" + docId]);
 });
 
 test("undoLastImport only undoes the most recent import", async () => {
-  analyzeDocument.mockResolvedValue([makeEvents()[0]]);
+  analyzeDocument.mockResolvedValue(
+    makeAnalysisResult([makeEvents()[0]]),
+  );
   installFakeIndexedDB();
   const { importDocument, undoLastImport } = useCalendar();
 
   await importDocument(makeFile());
   const firstDocId = getLastImport().docId;
 
-  analyzeDocument.mockResolvedValue([makeEvents()[1]]);
+  analyzeDocument.mockResolvedValue(
+    makeAnalysisResult([makeEvents()[1]]),
+  );
   await importDocument(makeFile());
 
   await undoLastImport();
@@ -158,4 +166,28 @@ test("undoLastImport returns false when there is no import", async () => {
   const { undoLastImport } = useCalendar();
 
   assert.equal(await undoLastImport(), false);
+});
+
+test("removeDocument deletes events, record, blob, and text", async () => {
+  analyzeDocument.mockResolvedValue(makeAnalysisResult());
+  const calls = installFakeIndexedDB();
+  const { importDocument, removeDocument } = useCalendar();
+
+  await importDocument(makeFile());
+  const docId = getLastImport().docId;
+
+  const removed = await removeDocument(docId);
+
+  assert.equal(removed, true);
+  assert.equal(getEvents().length, 0);
+  assert.equal(getDocuments().length, 0);
+  assert.equal(getLastImport(), null);
+  assert.deepEqual(calls.delete, [docId, "text:" + docId]);
+});
+
+test("removeDocument returns false for an unknown doc", async () => {
+  const { removeDocument } = useCalendar();
+
+  assert.equal(await removeDocument("missing"), false);
+  assert.equal(await removeDocument(""), false);
 });
