@@ -6,7 +6,7 @@
 
 ### 1. 設定 API 金鑰
 
-複製 `js/config.example.js` 為 `js/config.js`，填入你的 Ark API 金鑰：
+複製 `js/config.example.js` 為 `js/config.js`，填入你自己的設定：
 
 ```bash
 cp js/config.example.js js/config.js
@@ -14,10 +14,10 @@ cp js/config.example.js js/config.js
 
 ```js
 export const AI_CONFIG = {
-  apiKey: "ark-你的-api-key",
-  endpoint: "http://localhost:3000/api/ai",
-  remoteEndpoint: "https://ark.cn-beijing.volces.com/api/coding/v1/messages",
-  model: "glm-5.2",
+  apiKey: "ark-你的-api-key",                                    // 你的 Ark API 金鑰
+  endpoint: "http://localhost:你的埠號/api/ai",                    // 本地代理伺服器地址
+  remoteEndpoint: "https://ark.cn-beijing.volces.com/api/coding/v1/messages", // Ark API 遠端端點
+  model: "你的模型名稱",                                          // 使用的模型
 };
 ```
 

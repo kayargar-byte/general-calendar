@@ -1,8 +1,12 @@
-// 複製此檔為 js/config.js 並填入你的 Ark API 金鑰。
+// 複製此檔為 js/config.js，填入你自己的設定。
 // js/config.js 已被 .gitignore 排除，不會進入版本庫。
 export const AI_CONFIG = {
+  // 你的 Ark API 金鑰
   apiKey: "ark-你的-api-key",
-  endpoint: "http://localhost:3000/api/ai",
+  // 本地代理伺服器地址（對應 server.js 啟動的埠）
+  endpoint: "http://localhost:你的埠號/api/ai",
+  // Ark API 的遠端端點
   remoteEndpoint: "https://ark.cn-beijing.volces.com/api/coding/v1/messages",
-  model: "glm-5.2",
+  // 使用的模型名稱
+  model: "你的模型名稱",
 };
