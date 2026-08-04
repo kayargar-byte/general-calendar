@@ -8,7 +8,22 @@ import {
   saveCalendars,
   updateCalendar,
 } from "../lib/calendar-catalog.js";
-import { createEvent, getEvents, reassignEventsCalendar } from "../lib/storage.js";
+import {
+  createEvent,
+  deleteEvent,
+  getEvents,
+  reassignEventsCalendar,
+} from "../lib/storage.js";
+import { analyzeDocument } from "../lib/ai.js";
+import {
+  clearLastImport,
+  createDocument,
+  deleteDocument,
+  deleteDocumentBlob,
+  getLastImport,
+  saveDocumentBlob,
+  setLastImport,
+} from "../lib/document-store.js";
 
 export function useCalendar() {
   const today = new Date();
@@ -25,6 +40,11 @@ export function useCalendar() {
   const isBatchDialogOpen = ref(false);
   const pendingBatchEvents = ref([]);
   const aiPrefill = ref(null);
+  const isImporting = ref(false);
+  const importError = ref("");
+  const importBannerOpen = ref(false);
+  const importCount = ref(0);
+  const importDocName = ref("");
 
   const calendars = ref(getCalendars());
   const visibleCalendarIds = ref(
@@ -276,6 +296,91 @@ export function useCalendar() {
     restoreFocus();
   }
 
+  async function importDocument(file) {
+    isImporting.value = true;
+    importError.value = "";
+    importBannerOpen.value = false;
+
+    try {
+      const events = await analyzeDocument(file, calendars.value);
+      const docId = crypto.randomUUID();
+      const importedEvents = [];
+
+      for (const event of events) {
+        try {
+          importedEvents.push(
+            createEvent({
+              ...event,
+              sourceDocId: docId,
+              sourceQuote: event.quote,
+            }),
+          );
+        } catch {
+          // 單筆無效事件不阻斷整批匯入
+        }
+      }
+
+      if (importedEvents.length === 0) {
+        throw new Error("未能從文檔中解析出任何事件，請檢查文檔內容。");
+      }
+
+      createDocument({
+        id: docId,
+        name: typeof file.name === "string" ? file.name : "",
+        mimeType: typeof file.type === "string" ? file.type : "",
+        size: file.size ?? 0,
+      });
+
+      try {
+        await saveDocumentBlob(docId, file);
+      } catch {
+        // 原檔存儲失敗不阻斷事件匯入（檢視原檔為後續功能）
+      }
+
+      setLastImport(docId);
+      importCount.value = importedEvents.length;
+      importDocName.value = typeof file.name === "string" ? file.name : "";
+      importBannerOpen.value = true;
+      eventsVersion.value++;
+    } catch (error) {
+      importError.value =
+        error instanceof Error ? error.message : "文檔匯入失敗。";
+      importBannerOpen.value = true;
+    } finally {
+      isImporting.value = false;
+    }
+  }
+
+  async function undoLastImport() {
+    const last = getLastImport();
+
+    if (!last) {
+      return false;
+    }
+
+    const docId = last.docId;
+    const docEvents = getEvents().filter(
+      (event) => event.sourceDocId === docId,
+    );
+
+    for (const event of docEvents) {
+      deleteEvent(event.id);
+    }
+
+    deleteDocument(docId);
+    await deleteDocumentBlob(docId);
+    clearLastImport();
+    importBannerOpen.value = false;
+    importError.value = "";
+    eventsVersion.value++;
+    return true;
+  }
+
+  function closeImportBanner() {
+    importBannerOpen.value = false;
+    importError.value = "";
+  }
+
   function restoreFocus() {
     const current = returnFocus.value;
     returnFocus.value = null;
@@ -336,5 +441,13 @@ export function useCalendar() {
     handleEventSaved,
     handleEventDeleted,
     handleDialogClosed,
+    isImporting,
+    importError,
+    importBannerOpen,
+    importCount,
+    importDocName,
+    importDocument,
+    undoLastImport,
+    closeImportBanner,
   };
 }

@@ -302,3 +302,26 @@ test("seedSampleEventsIfFirstRun keeps existing user events", () => {
   assert.equal(seedSampleEventsIfFirstRun(storage), false);
   assert.equal(getEvents(storage).length, 1);
 });
+
+test("createEvent preserves source document fields", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(
+    buildEvent({
+      sourceDocId: "doc-1",
+      sourceQuote: "  身份證將於 2026-12-01 到期  ",
+    }),
+    storage,
+  );
+
+  assert.equal(event.sourceDocId, "doc-1");
+  assert.equal(event.sourceQuote, "身份證將於 2026-12-01 到期");
+  assert.equal(getEvents(storage)[0].sourceDocId, "doc-1");
+});
+
+test("events without source fields normalize to empty strings", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent(), storage);
+
+  assert.equal(event.sourceDocId, "");
+  assert.equal(event.sourceQuote, "");
+});

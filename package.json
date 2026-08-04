@@ -11,7 +11,12 @@
     "ai-proxy": "node server/server.js"
   },
   "dependencies": {
-    "vue": "^3.5.40"
+    "busboy": "^1.6.0",
+    "mammoth": "^1.12.0",
+    "naive-ui": "^2.44.1",
+    "pdf-parse": "^2.4.5",
+    "vue": "^3.5.40",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",

@@ -13,6 +13,8 @@ import EventSearch from "./components/EventSearch.vue";
 import ManageDialog from "./components/ManageDialog.vue";
 import SettingsDialog from "./components/SettingsDialog.vue";
 import DatePickerPopover from "./components/DatePickerPopover.vue";
+import ImportDocumentButton from "./components/ImportDocumentButton.vue";
+import ImportBanner from "./components/ImportBanner.vue";
 
 const {
   monthTitle,
@@ -47,6 +49,14 @@ const {
   handleEventSaved,
   handleEventDeleted,
   handleDialogClosed,
+  isImporting,
+  importError,
+  importBannerOpen,
+  importCount,
+  importDocName,
+  importDocument,
+  undoLastImport,
+  closeImportBanner,
 } = useCalendar();
 
 const aiScheduleLauncherRef = ref(null);
@@ -173,6 +183,8 @@ onUnmounted(() => {
       新增事件
     </button>
 
+    <ImportDocumentButton :busy="isImporting" @file="importDocument" />
+
     <EventSearch :calendars="calendars" @select="navigateToEvent" />
 
     <div class="toolbar-actions">
@@ -201,6 +213,15 @@ onUnmounted(() => {
       </div>
     </div>
   </header>
+
+  <ImportBanner
+    :open="importBannerOpen"
+    :count="importCount"
+    :doc-name="importDocName"
+    :error="importError"
+    @undo="undoLastImport"
+    @close="closeImportBanner"
+  />
 
   <div
     class="calendar-layout"

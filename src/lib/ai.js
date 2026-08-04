@@ -2,6 +2,10 @@ import { toDateKey } from "./date-utils.js";
 
 const AI_ENDPOINT =
   import.meta.env.VITE_AI_ENDPOINT ?? "http://localhost:3000/api/ai";
+const AI_DOCUMENT_ENDPOINT =
+  import.meta.env.VITE_AI_DOCUMENT_ENDPOINT ??
+  "http://localhost:3000/api/documents/analyze";
+const AI_PROXY_KEY = import.meta.env.VITE_AI_PROXY_KEY ?? "change-me-0f3c9a";
 
 const WEEKDAY_LABELS = [
   "星期日",
@@ -142,6 +146,9 @@ function normalizeParsedEvent(parsed, validCalendarIds) {
   const notes =
     typeof parsed.notes === "string" ? parsed.notes.trim() : "";
 
+  const quote =
+    typeof parsed.quote === "string" ? parsed.quote.trim() : "";
+
   return {
     title: title || "未命名事件",
     date,
@@ -149,6 +156,7 @@ function normalizeParsedEvent(parsed, validCalendarIds) {
     endTime,
     calendarId,
     notes,
+    quote,
   };
 }
 
@@ -198,6 +206,7 @@ export async function parseSchedule(text, calendars) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Proxy-Key": AI_PROXY_KEY,
       },
       body: JSON.stringify({
         max_tokens: 1024,
@@ -239,6 +248,64 @@ export async function parseSchedule(text, calendars) {
 
   if (events.length === 0) {
     throw new Error("AI 無法解析此日程，請嘗試更具體的描述。");
+  }
+
+  return events;
+}
+
+export async function analyzeDocument(file, calendars) {
+  if (!(file instanceof File) || !file.name) {
+    throw new Error("請先選擇要匯入的文檔。");
+  }
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append(
+    "calendars",
+    JSON.stringify(Array.isArray(calendars) ? calendars : []),
+  );
+
+  let response;
+
+  try {
+    response = await fetch(AI_DOCUMENT_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "X-Proxy-Key": AI_PROXY_KEY,
+      },
+      body: form,
+    });
+  } catch {
+    throw new Error(
+      "無法連接 AI 服務，請確認已啟動本地代理伺服器（npm run ai-proxy）。",
+    );
+  }
+
+  if (!response.ok) {
+    let message = `AI 服務回應錯誤（${response.status}）。`;
+
+    try {
+      const errorBody = await response.json();
+
+      if (errorBody?.error?.message) {
+        message = errorBody.error.message;
+      }
+    } catch {
+      // keep default message
+    }
+
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const calendarList = Array.isArray(calendars) ? calendars : [];
+  const events = normalizeParsedEvents(
+    data?.events,
+    new Set(calendarList.map((calendar) => calendar.id)),
+  );
+
+  if (events.length === 0) {
+    throw new Error("未能從文檔中解析出任何事件，請檢查文檔內容。");
   }
 
   return events;

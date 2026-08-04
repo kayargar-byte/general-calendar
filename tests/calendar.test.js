@@ -146,3 +146,60 @@ test("MiniCalendar renders selectable dates from the visible month", async () =>
   await dateButtons[0].trigger("click");
   assert.equal(wrapper.emitted("open-create")[0][0], "2026-08-01");
 });
+
+test("CalendarGrid shows a source quote tooltip on hover", async () => {
+  const days = [
+    {
+      dateKey: "2026-08-15",
+      dayNumber: 15,
+      label: "2026年8月15日 星期六",
+      isCurrentMonth: true,
+      isToday: false,
+      events: [
+        {
+          id: "event-1",
+          title: "覆診",
+          startTime: "15:00",
+          sourceQuote: "下周三下午三時在衛生局覆診",
+        },
+      ],
+    },
+  ];
+
+  const wrapper = mount(CalendarGrid, {
+    props: { days, calendars: getCalendars() },
+  });
+  const eventButton = wrapper.find(".event-summary");
+
+  await eventButton.trigger("mouseenter");
+
+  assert.equal(
+    wrapper.find("#event-source-tooltip").text(),
+    "下周三下午三時在衛生局覆診",
+  );
+
+  await eventButton.trigger("mouseleave");
+
+  assert.ok(!wrapper.find("#event-source-tooltip").exists());
+});
+
+test("CalendarGrid does not render a tooltip without a source quote", async () => {
+  const days = [
+    {
+      dateKey: "2026-08-15",
+      dayNumber: 15,
+      label: "2026年8月15日 星期六",
+      isCurrentMonth: true,
+      isToday: false,
+      events: [{ id: "event-1", title: "覆診", startTime: "15:00" }],
+    },
+  ];
+
+  const wrapper = mount(CalendarGrid, {
+    props: { days, calendars: getCalendars() },
+  });
+
+  await wrapper.find(".event-summary").trigger("mouseenter");
+
+  assert.ok(!wrapper.find("#event-source-tooltip").exists());
+});

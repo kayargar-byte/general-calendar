@@ -1381,3 +1381,20 @@ dialog::backdrop {
   gap: 8px;
   font-size: 13px;
 }
+
+/* 事件來源浮窗（fixed 定位，避免被日格 overflow 裁剪） */
+.event-source-tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #2a2a2c;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  pointer-events: none;
+}

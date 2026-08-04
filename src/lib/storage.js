@@ -118,6 +118,11 @@ function normalizeEvent(input, id, storage) {
     throw new Error("日曆分類 calendarId 無效。");
   }
 
+  const sourceDocId =
+    typeof input.sourceDocId === "string" ? input.sourceDocId : "";
+  const sourceQuote =
+    typeof input.sourceQuote === "string" ? input.sourceQuote.trim() : "";
+
   return {
     id,
     title,
@@ -126,6 +131,8 @@ function normalizeEvent(input, id, storage) {
     endTime,
     notes: input.notes?.trim() ?? "",
     calendarId,
+    sourceDocId,
+    sourceQuote,
   };
 }
 

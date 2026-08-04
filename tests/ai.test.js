@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import {
+  analyzeDocument,
   normalizeParsedEvents,
   parseSchedule,
 } from "../src/lib/ai.js";
@@ -135,4 +136,88 @@ test("normalizeParsedEvents falls back on invalid fields", () => {
   assert.equal(events[0].title, "未命名事件");
   assert.equal(events[0].calendarId, "personal");
   assert.equal(events[1].title, "會議");
+});
+
+function mockDocumentOkResponse(events) {
+  return {
+    ok: true,
+    json: async () => ({ events }),
+  };
+}
+
+test("analyzeDocument sends the proxy key and returns normalized events with quotes", async () => {
+  let requestHeaders;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url, options) => {
+      requestHeaders = options.headers;
+      return mockDocumentOkResponse([
+        {
+          title: "覆診",
+          date: "2026-08-06",
+          startTime: "15:00",
+          endTime: "16:00",
+          calendarId: "medical",
+          notes: "",
+          quote: "下周三下午三時在衛生局覆診",
+        },
+      ]);
+    }),
+  );
+
+  const file = new File(["content"], "sample.docx", {
+    type: "application/pdf",
+  });
+  const events = await analyzeDocument(file, CALENDARS);
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].title, "覆診");
+  assert.equal(events[0].quote, "下周三下午三時在衛生局覆診");
+  assert.equal(requestHeaders["X-Proxy-Key"], "change-me-0f3c9a");
+});
+
+test("analyzeDocument throws when the proxy is unreachable", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+  const file = new File(["content"], "a.pdf", { type: "application/pdf" });
+
+  await assert.rejects(
+    () => analyzeDocument(file, CALENDARS),
+    /無法連接 AI 服務/,
+  );
+});
+
+test("analyzeDocument surfaces proxy error messages", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: { message: "此 PDF 為掃描型，無法直接抽文字" },
+      }),
+    }),
+  );
+  const file = new File(["content"], "scan.pdf", { type: "application/pdf" });
+
+  await assert.rejects(
+    () => analyzeDocument(file, CALENDARS),
+    /此 PDF 為掃描型/,
+  );
+});
+
+test("analyzeDocument throws when no events are returned", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockDocumentOkResponse([])));
+  const file = new File(["content"], "a.pdf", { type: "application/pdf" });
+
+  await assert.rejects(
+    () => analyzeDocument(file, CALENDARS),
+    /未能從文檔中解析出任何事件/,
+  );
+});
+
+test("analyzeDocument rejects non-file input", async () => {
+  await assert.rejects(
+    () => analyzeDocument("not a file", CALENDARS),
+    /請先選擇要匯入的文檔/,
+  );
 });
