@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCalendar } from "./composables/useCalendar.js";
 import CalendarGrid from "./components/CalendarGrid.vue";
 import MiniCalendar from "./components/MiniCalendar.vue";
@@ -10,17 +10,22 @@ import AiSchedulePanel from "./components/AiSchedulePanel.vue";
 const {
   monthTitle,
   isAiScheduleOpen,
+  calendars,
   visibleCalendarIds,
   days,
   changeMonth,
   goToday,
   toggleCalendar,
+  addCalendar,
+  removeCalendar,
+  reorderCalendars,
   toggleAiSchedule,
   openCreateEventDialog,
   openEditEventDialog,
   editingEventId,
   isEventDialogOpen,
   pendingDate,
+  slideDirection,
   handleEventSaved,
   handleEventDeleted,
   handleDialogClosed,
@@ -28,6 +33,63 @@ const {
 
 const aiScheduleLauncherRef = ref(null);
 const aiSchedulePanelRef = ref(null);
+const calendarWorkspaceRef = ref(null);
+
+const monthTransitionName = computed(() =>
+  slideDirection.value === "prev" ? "month-slide-prev" : "month-slide-next",
+);
+
+let wheelAccumulator = 0;
+let lastWheelSwitchAt = 0;
+const WHEEL_SWITCH_THRESHOLD = 60;
+const WHEEL_SWITCH_COOLDOWN = 180;
+
+function handleWheel(event) {
+  if (isEventDialogOpen.value) {
+    return;
+  }
+
+  const workspace = calendarWorkspaceRef.value;
+
+  if (!workspace) {
+    return;
+  }
+
+  const scrollable = workspace.scrollHeight - workspace.clientHeight > 1;
+
+  if (scrollable) {
+    const atTop = workspace.scrollTop <= 0;
+    const atBottom =
+      workspace.scrollTop + workspace.clientHeight >=
+      workspace.scrollHeight - 1;
+
+    if (event.deltaY < 0 && !atTop) {
+      return;
+    }
+
+    if (event.deltaY > 0 && !atBottom) {
+      return;
+    }
+  }
+
+  event.preventDefault();
+
+  const now = performance.now();
+
+  if (now - lastWheelSwitchAt < WHEEL_SWITCH_COOLDOWN) {
+    return;
+  }
+
+  wheelAccumulator += event.deltaY;
+
+  if (Math.abs(wheelAccumulator) < WHEEL_SWITCH_THRESHOLD) {
+    return;
+  }
+
+  changeMonth(wheelAccumulator > 0 ? 1 : -1);
+  wheelAccumulator = 0;
+  lastWheelSwitchAt = now;
+}
 
 watch(isAiScheduleOpen, (isOpen) => {
   nextTick(() => {
@@ -49,8 +111,16 @@ function handleKeydown(event) {
   }
 }
 
-onMounted(() => document.addEventListener("keydown", handleKeydown));
-onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
+onMounted(() => {
+  document.addEventListener("keydown", handleKeydown);
+  calendarWorkspaceRef.value?.addEventListener("wheel", handleWheel, {
+    passive: false,
+  });
+});
+onUnmounted(() => {
+  document.removeEventListener("keydown", handleKeydown);
+  calendarWorkspaceRef.value?.removeEventListener("wheel", handleWheel);
+});
 </script>
 
 <template>
@@ -89,8 +159,12 @@ onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
         </section>
 
         <CalendarFilters
+          :calendars="calendars"
           :visible-calendar-ids="visibleCalendarIds"
           @toggle="toggleCalendar"
+          @add-tag="addCalendar"
+          @remove-tag="removeCalendar"
+          @reorder-tags="reorderCalendars"
         />
       </div>
 
@@ -101,31 +175,34 @@ onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
       />
     </aside>
 
-    <main class="calendar-workspace">
-      <section class="calendar" aria-labelledby="calendar-title">
-        <h2 id="calendar-title">{{ monthTitle }}</h2>
-        <div class="weekdays" aria-hidden="true">
-          <span>一</span>
-          <span>二</span>
-          <span>三</span>
-          <span>四</span>
-          <span>五</span>
-          <span>六</span>
-          <span>日</span>
-        </div>
-        <div
-          id="calendar-grid"
-          class="calendar-grid"
-          role="grid"
-          aria-live="polite"
-        >
-          <CalendarGrid
-            :days="days"
-            @open-create="openCreateEventDialog"
-            @open-edit="openEditEventDialog"
-          />
-        </div>
-      </section>
+    <main class="calendar-workspace" ref="calendarWorkspaceRef">
+      <Transition :name="monthTransitionName" mode="out-in">
+        <section class="calendar" :key="monthTitle" aria-labelledby="calendar-title">
+          <h2 id="calendar-title">{{ monthTitle }}</h2>
+          <div class="weekdays" aria-hidden="true">
+            <span>一</span>
+            <span>二</span>
+            <span>三</span>
+            <span>四</span>
+            <span>五</span>
+            <span>六</span>
+            <span>日</span>
+          </div>
+          <div
+            id="calendar-grid"
+            class="calendar-grid"
+            role="grid"
+            aria-live="polite"
+          >
+            <CalendarGrid
+              :days="days"
+              :calendars="calendars"
+              @open-create="openCreateEventDialog"
+              @open-edit="openEditEventDialog"
+            />
+          </div>
+        </section>
+      </Transition>
 
       <button
         type="button"
@@ -145,6 +222,7 @@ onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
     :open="isEventDialogOpen"
     :editing-event-id="editingEventId"
     :pending-date="pendingDate"
+    :calendars="calendars"
     @saved="handleEventSaved"
     @deleted="handleEventDeleted"
     @closed="handleDialogClosed"

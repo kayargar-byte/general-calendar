@@ -1,5 +1,6 @@
 import {
   DEFAULT_CALENDAR_ID,
+  getCalendars,
   isCalendarId,
 } from "./calendar-catalog.js";
 
@@ -50,7 +51,7 @@ function normalizeTime(value, fieldName) {
   return value;
 }
 
-function normalizeEvent(input, id) {
+function normalizeEvent(input, id, storage) {
   const title = typeof input?.title === "string" ? input.title.trim() : "";
 
   if (!title) {
@@ -72,12 +73,12 @@ function normalizeEvent(input, id) {
     throw new Error("備註格式無效。");
   }
 
+  const defaultCalendarId =
+    getCalendars(storage)[0]?.id ?? DEFAULT_CALENDAR_ID;
   const calendarId =
-    input.calendarId === undefined
-      ? DEFAULT_CALENDAR_ID
-      : input.calendarId;
+    input.calendarId === undefined ? defaultCalendarId : input.calendarId;
 
-  if (!isCalendarId(calendarId)) {
+  if (!isCalendarId(calendarId, storage)) {
     throw new Error("日曆分類 calendarId 無效。");
   }
 
@@ -126,7 +127,7 @@ export function getEvents(storage) {
         }
 
         try {
-          return normalizeEvent(event, event.id);
+          return normalizeEvent(event, event.id, storage);
         } catch {
           return null;
         }
@@ -139,7 +140,7 @@ export function getEvents(storage) {
 }
 
 export function createEvent(input, storage) {
-  const event = normalizeEvent(input, crypto.randomUUID());
+  const event = normalizeEvent(input, crypto.randomUUID(), storage);
   const events = [...getEvents(storage), event];
   saveEvents(events, storage);
 
@@ -154,7 +155,7 @@ export function updateEvent(id, input, storage) {
     return null;
   }
 
-  const updatedEvent = normalizeEvent(input, id);
+  const updatedEvent = normalizeEvent(input, id, storage);
   events[eventIndex] = updatedEvent;
   saveEvents(events, storage);
 
@@ -171,4 +172,21 @@ export function deleteEvent(id, storage) {
 
   saveEvents(remainingEvents, storage);
   return true;
+}
+
+export function reassignEventsCalendar(oldCalendarId, newCalendarId, storage) {
+  const events = getEvents(storage);
+  let changed = false;
+  const updatedEvents = events.map((event) => {
+    if (event.calendarId === oldCalendarId) {
+      changed = true;
+      return { ...event, calendarId: newCalendarId };
+    }
+
+    return event;
+  });
+
+  if (changed) {
+    saveEvents(updatedEvents, storage);
+  }
 }

@@ -1,6 +1,9 @@
 <script setup>
 import { nextTick, onMounted, ref, watch } from "vue";
-import { CALENDARS, DEFAULT_CALENDAR_ID } from "../lib/calendar-catalog.js";
+import {
+  DEFAULT_CALENDAR_ID,
+  getCalendars,
+} from "../lib/calendar-catalog.js";
 import {
   createEvent,
   deleteEvent,
@@ -12,6 +15,7 @@ const props = defineProps({
   open: { type: Boolean, required: true },
   editingEventId: { type: String, default: null },
   pendingDate: { type: String, default: "" },
+  calendars: { type: Array, default: () => getCalendars() },
 });
 const emit = defineEmits(["saved", "deleted", "closed"]);
 
@@ -58,7 +62,7 @@ function populateForm() {
   } else {
     title.value = "";
     date.value = props.pendingDate;
-    calendarId.value = DEFAULT_CALENDAR_ID;
+    calendarId.value = props.calendars[0]?.id ?? DEFAULT_CALENDAR_ID;
     startTime.value = "";
     endTime.value = "";
     notes.value = "";
@@ -187,7 +191,7 @@ function handleDelete() {
       <label for="event-calendar">日曆</label>
       <select id="event-calendar" name="calendarId" v-model="calendarId">
         <option
-          v-for="calendar in CALENDARS"
+          v-for="calendar in calendars"
           :key="calendar.id"
           :value="calendar.id"
         >

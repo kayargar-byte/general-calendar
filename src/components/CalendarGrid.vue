@@ -1,11 +1,18 @@
 <script setup>
-defineProps({
+const props = defineProps({
   days: { type: Array, required: true },
+  calendars: { type: Array, required: true },
 });
 const emit = defineEmits(["open-create", "open-edit"]);
 
 function eventSummary(event) {
   return event.startTime ? `${event.startTime} ${event.title}` : event.title;
+}
+
+function calendarColor(calendarId) {
+  return props.calendars.find(
+    (calendar) => calendar.id === calendarId,
+  )?.color;
 }
 </script>
 
@@ -38,6 +45,7 @@ function eventSummary(event) {
           class="event-summary"
           :data-event-id="event.id"
           :data-calendar-id="event.calendarId"
+          :style="{ '--event-color': calendarColor(event.calendarId) }"
           :aria-label="`查看事件：${eventSummary(event)}`"
           @click="emit('open-edit', event.id)"
         >

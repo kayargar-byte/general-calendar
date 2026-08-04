@@ -1,8 +1,13 @@
 import { computed, nextTick, ref } from "vue";
 import { formatMonthTitle } from "../lib/date-utils.js";
 import { buildCalendarView } from "../lib/buildCalendarView.js";
-import { CALENDARS } from "../lib/calendar-catalog.js";
-import { getEvents } from "../lib/storage.js";
+import {
+  createCalendar,
+  deleteCalendar,
+  getCalendars,
+  saveCalendars,
+} from "../lib/calendar-catalog.js";
+import { getEvents, reassignEventsCalendar } from "../lib/storage.js";
 
 export function useCalendar() {
   const today = new Date();
@@ -15,9 +20,11 @@ export function useCalendar() {
   const pendingDate = ref("");
   const eventsVersion = ref(0);
   const returnFocus = ref(null);
+  const slideDirection = ref("next");
 
+  const calendars = ref(getCalendars());
   const visibleCalendarIds = ref(
-    new Set(CALENDARS.map((calendar) => calendar.id)),
+    new Set(calendars.value.map((calendar) => calendar.id)),
   );
 
   function toggleCalendar(id, checked) {
@@ -30,6 +37,65 @@ export function useCalendar() {
     }
 
     visibleCalendarIds.value = next;
+  }
+
+  function addCalendar(label) {
+    const calendar = createCalendar(label);
+    calendars.value = getCalendars();
+
+    if (!visibleCalendarIds.value.has(calendar.id)) {
+      visibleCalendarIds.value = new Set([
+        ...visibleCalendarIds.value,
+        calendar.id,
+      ]);
+    }
+  }
+
+  function removeCalendar(id) {
+    if (calendars.value.length <= 1) {
+      return false;
+    }
+
+    const hasEvents = getEvents().some(
+      (event) => event.calendarId === id,
+    );
+
+    if (hasEvents) {
+      const fallback =
+        calendars.value.find((calendar) => calendar.id === "other") ??
+        calendars.value.find((calendar) => calendar.id !== id);
+      reassignEventsCalendar(id, fallback.id);
+    }
+
+    deleteCalendar(id);
+    calendars.value = getCalendars();
+
+    if (visibleCalendarIds.value.has(id)) {
+      const next = new Set(visibleCalendarIds.value);
+      next.delete(id);
+      visibleCalendarIds.value = next;
+    }
+
+    eventsVersion.value++;
+    return true;
+  }
+
+  function reorderCalendars(fromId, toId) {
+    const fromIndex = calendars.value.findIndex(
+      (calendar) => calendar.id === fromId,
+    );
+    const toIndex = calendars.value.findIndex(
+      (calendar) => calendar.id === toId,
+    );
+
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      return;
+    }
+
+    const next = [...calendars.value];
+    [next[fromIndex], next[toIndex]] = [next[toIndex], next[fromIndex]];
+    calendars.value = next;
+    saveCalendars(next);
   }
 
   const monthTitle = computed(() =>
@@ -51,6 +117,7 @@ export function useCalendar() {
   });
 
   function changeMonth(offset) {
+    slideDirection.value = offset > 0 ? "next" : "prev";
     visibleMonth.value = new Date(
       visibleMonth.value.getFullYear(),
       visibleMonth.value.getMonth() + offset,
@@ -60,11 +127,19 @@ export function useCalendar() {
 
   function goToday() {
     const todayDate = new Date();
-    visibleMonth.value = new Date(
+    const targetMonth = new Date(
       todayDate.getFullYear(),
       todayDate.getMonth(),
       1,
     );
+
+    if (targetMonth.getTime() === visibleMonth.value.getTime()) {
+      return;
+    }
+
+    slideDirection.value =
+      targetMonth > visibleMonth.value ? "next" : "prev";
+    visibleMonth.value = targetMonth;
   }
 
   function toggleAiSchedule() {
@@ -156,12 +231,17 @@ export function useCalendar() {
     isAiScheduleOpen,
     isEventDialogOpen,
     pendingDate,
+    calendars,
     visibleCalendarIds,
+    slideDirection,
     monthTitle,
     days,
     changeMonth,
     goToday,
     toggleCalendar,
+    addCalendar,
+    removeCalendar,
+    reorderCalendars,
     toggleAiSchedule,
     openCreateEventDialog,
     openEditEventDialog,

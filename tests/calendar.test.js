@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mount } from "@vue/test-utils";
 import { test } from "vitest";
+import { getCalendars } from "../src/lib/calendar-catalog.js";
 import { buildCalendarView } from "../src/lib/buildCalendarView.js";
 import CalendarGrid from "../src/components/CalendarGrid.vue";
 import MiniCalendar from "../src/components/MiniCalendar.vue";
@@ -106,7 +107,9 @@ test("CalendarGrid exposes each event calendar for category styling", () => {
     },
   ];
 
-  const wrapper = mount(CalendarGrid, { props: { days } });
+  const wrapper = mount(CalendarGrid, {
+    props: { days, calendars: getCalendars() },
+  });
   const eventButton = wrapper.find(".event-summary");
 
   assert.equal(eventButton.attributes("data-calendar-id"), "other");

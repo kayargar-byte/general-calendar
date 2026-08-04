@@ -765,12 +765,137 @@ dialog::backdrop {
   display: none !important;
 }
 
+.month-slide-next-enter-active,
+.month-slide-next-leave-active,
+.month-slide-prev-enter-active,
+.month-slide-prev-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 220ms ease;
+}
+
+.month-slide-next-enter-from {
+  transform: translateY(36px);
+  opacity: 0;
+}
+
+.month-slide-next-leave-to {
+  transform: translateY(-36px);
+  opacity: 0;
+}
+
+.month-slide-prev-enter-from {
+  transform: translateY(-36px);
+  opacity: 0;
+}
+
+.month-slide-prev-leave-to {
+  transform: translateY(36px);
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .calendar-layout,
   .calendar-sidebar-content,
   .ai-schedule-panel,
   .calendar-layout.is-ai-schedule-open .calendar-sidebar-content,
-  .calendar-layout.is-ai-schedule-open .ai-schedule-panel {
+  .calendar-layout.is-ai-schedule-open .ai-schedule-panel,
+  .month-slide-next-enter-active,
+  .month-slide-next-leave-active,
+  .month-slide-prev-enter-active,
+  .month-slide-prev-leave-active {
     transition: none;
   }
+}
+
+/* 側欄分類標籤：新增／刪除 */
+.tag-toolbar {
+  padding: 2px 0 4px;
+}
+
+.add-calendar-tag {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.add-calendar-tag:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.tag-add-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+#calendar-filters input[type="text"] {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 80px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  appearance: auto;
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 5px;
+  font-size: 13px;
+  background: #ffffff;
+}
+
+#calendar-filters input[type="text"]::after {
+  content: none;
+}
+
+.tag-add-error {
+  margin: 0;
+  padding: 2px 0;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.tag-row-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.remove-calendar-tag {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove-calendar-tag:hover:not(:disabled) {
+  background: #eaeaed;
+  color: var(--color-danger);
+}
+
+.remove-calendar-tag:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+#calendar-filters label.is-dragging {
+  opacity: 0.5;
+}
+
+#calendar-filters label.is-drop-target {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
 }
