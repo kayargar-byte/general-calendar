@@ -2,7 +2,16 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AI_CONFIG } from "./js/config.js";
+
+let AI_CONFIG = null;
+
+try {
+  const module = await import("./js/config.js");
+  AI_CONFIG = module.AI_CONFIG;
+} catch {
+  console.warn("警告：找不到 js/config.js，AI 代理功能不可用。");
+  console.warn("請複製 js/config.example.js 為 js/config.js 並填入 API 金鑰。");
+}
 
 const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +57,18 @@ function serveStaticFile(req, res) {
 }
 
 async function handleAiProxy(req, res) {
+  if (!AI_CONFIG) {
+    res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(
+      JSON.stringify({
+        error: {
+          message: "尚未設定 API 金鑰，請複製 js/config.example.js 為 js/config.js 並填入金鑰。",
+        },
+      }),
+    );
+    return;
+  }
+
   const chunks = [];
 
   for await (const chunk of req) {

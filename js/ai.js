@@ -1,6 +1,14 @@
-import { AI_CONFIG } from "./config.js";
 import { CALENDARS } from "./calendar-catalog.js";
 import { toDateKey } from "./date-utils.js";
+
+let AI_CONFIG = null;
+
+try {
+  const module = await import("./config.js");
+  AI_CONFIG = module.AI_CONFIG;
+} catch {
+  // config.js 不存在（尚未設定 API 金鑰），AI 功能不可用
+}
 
 const WEEKDAY_LABELS = [
   "星期日",
@@ -149,6 +157,10 @@ export async function parseSchedule(text) {
 
   if (!trimmedText) {
     throw new Error("請先輸入日程描述。");
+  }
+
+  if (!AI_CONFIG) {
+    throw new Error("尚未設定 AI API 金鑰，請複製 js/config.example.js 為 js/config.js 並填入金鑰。");
   }
 
   let response;
