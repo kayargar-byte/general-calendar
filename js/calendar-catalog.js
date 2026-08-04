@@ -1,4 +1,5 @@
 const STORAGE_KEY = "general-calendar.calendars.v1";
+const OVERRIDE_STORAGE_KEY = "general-calendar.overrides.v1";
 
 export const DEFAULT_CALENDAR_ID = "personal";
 
@@ -102,13 +103,74 @@ export function getCustomCalendars(storage) {
   return customs;
 }
 
+export function getCalendarOverrides(storage) {
+  let raw;
+
+  try {
+    raw = resolveStorage(storage).getItem(OVERRIDE_STORAGE_KEY);
+  } catch {
+    return {};
+  }
+
+  if (!raw) {
+    return {};
+  }
+
+  let parsed;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {};
+  }
+
+  const overrides = {};
+
+  for (const [id, entry] of Object.entries(parsed)) {
+    if (!DEFAULT_BY_ID.has(id) || !entry || typeof entry !== "object") {
+      continue;
+    }
+
+    const label = typeof entry.label === "string" ? entry.label.trim() : "";
+    const color = typeof entry.color === "string" ? entry.color : "";
+
+    if (!LABEL_PATTERN.test(label) || !HEX_PATTERN.test(color)) {
+      continue;
+    }
+
+    overrides[id] = { label, color: color.toLowerCase() };
+  }
+
+  return overrides;
+}
+
 export function getAllCalendars(storage) {
-  return [...CALENDARS, ...getCustomCalendars(storage)];
+  const overrides = getCalendarOverrides(storage);
+
+  return [
+    ...CALENDARS.map((calendar) => {
+      const override = overrides[calendar.id];
+      return override
+        ? { ...calendar, label: override.label, color: override.color }
+        : { ...calendar };
+    }),
+    ...getCustomCalendars(storage),
+  ];
 }
 
 export function getCalendarById(id, storage) {
   if (DEFAULT_BY_ID.has(id)) {
-    return DEFAULT_BY_ID.get(id);
+    const overrides = getCalendarOverrides(storage);
+    const override = overrides[id];
+    const base = DEFAULT_BY_ID.get(id);
+
+    return override
+      ? { ...base, label: override.label, color: override.color }
+      : { ...base };
   }
 
   return getCustomCalendars(storage).find((calendar) => calendar.id === id) ?? null;
@@ -147,7 +209,7 @@ export function createCalendar({ label, color }, storage) {
 
   const normalizedColor = color.toLowerCase();
   const customs = getCustomCalendars(storage);
-  const existing = [...CALENDARS, ...customs];
+  const existing = getAllCalendars(storage);
 
   if (existing.some((calendar) => calendar.label === trimmedLabel)) {
     throw new Error("此標籤名稱已存在。");
@@ -165,4 +227,127 @@ export function createCalendar({ label, color }, storage) {
   );
 
   return newCalendar;
+}
+
+export function updateCalendar(id, { label, color }, storage) {
+  if (typeof id !== "string" || !id) {
+    throw new Error("標籤 ID 無效。");
+  }
+
+  const trimmedLabel = typeof label === "string" ? label.trim() : "";
+
+  if (!trimmedLabel) {
+    throw new Error("標籤名稱為必填。");
+  }
+
+  if (trimmedLabel.length > 20) {
+    throw new Error("標籤名稱不得超過 20 個字。");
+  }
+
+  if (typeof color !== "string" || !HEX_PATTERN.test(color)) {
+    throw new Error("標籤顏色格式無效。");
+  }
+
+  const normalizedColor = color.toLowerCase();
+  const allCalendars = getAllCalendars(storage);
+  const conflict = allCalendars.some(
+    (calendar) => calendar.id !== id && calendar.label === trimmedLabel,
+  );
+
+  if (conflict) {
+    throw new Error("此標籤名稱已存在。");
+  }
+
+  if (DEFAULT_BY_ID.has(id)) {
+    const overrides = getCalendarOverrides(storage);
+    const nextOverrides = {
+      ...overrides,
+      [id]: { label: trimmedLabel, color: normalizedColor },
+    };
+
+    resolveStorage(storage).setItem(
+      OVERRIDE_STORAGE_KEY,
+      JSON.stringify(nextOverrides),
+    );
+
+    return {
+      ...DEFAULT_BY_ID.get(id),
+      label: trimmedLabel,
+      color: normalizedColor,
+    };
+  }
+
+  const customs = getCustomCalendars(storage);
+  const index = customs.findIndex((calendar) => calendar.id === id);
+
+  if (index === -1) {
+    throw new Error("找不到要更新的標籤。");
+  }
+
+  const updatedCalendar = {
+    ...customs[index],
+    label: trimmedLabel,
+    color: normalizedColor,
+  };
+
+  const nextCustoms = [...customs];
+  nextCustoms[index] = updatedCalendar;
+
+  resolveStorage(storage).setItem(
+    STORAGE_KEY,
+    JSON.stringify(nextCustoms),
+  );
+
+  return updatedCalendar;
+}
+
+export function hasCalendarOverride(id, storage) {
+  if (!DEFAULT_BY_ID.has(id)) {
+    return false;
+  }
+
+  const overrides = getCalendarOverrides(storage);
+  return Boolean(overrides[id]);
+}
+
+export function resetCalendarOverride(id, storage) {
+  if (!DEFAULT_BY_ID.has(id)) {
+    throw new Error("無法重置自訂標籤。");
+  }
+
+  const overrides = getCalendarOverrides(storage);
+
+  if (!overrides[id]) {
+    return false;
+  }
+
+  const nextOverrides = { ...overrides };
+  delete nextOverrides[id];
+
+  resolveStorage(storage).setItem(
+    OVERRIDE_STORAGE_KEY,
+    JSON.stringify(nextOverrides),
+  );
+
+  return true;
+}
+
+export function deleteCalendar(id, storage) {
+  if (!DEFAULT_BY_ID.has(id)) {
+    const customs = getCustomCalendars(storage);
+    const nextCustoms = customs.filter((calendar) => calendar.id !== id);
+
+    if (nextCustoms.length === customs.length) {
+      throw new Error("找不到要刪除的標籤。");
+    }
+
+    resolveStorage(storage).setItem(
+      STORAGE_KEY,
+      JSON.stringify(nextCustoms),
+    );
+
+    return true;
+  }
+
+  throw new Error("無法刪除內建標籤，請改用重置功能。");
 }

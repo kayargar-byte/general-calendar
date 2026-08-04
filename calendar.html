@@ -9,74 +9,113 @@
   </head>
   <body>
     <header class="calendar-toolbar">
-      <h1>我的日曆</h1>
+      <h1 data-i18n="app.title">我的日曆</h1>
 
       <button type="button" id="create-event">
         <span aria-hidden="true">＋</span>
-        新增事件
+        <span data-i18n="app.newEvent">新增事件</span>
       </button>
 
-      <div class="month-controls" role="group" aria-label="月份導覽">
-        <button type="button" id="previous-month" aria-label="上個月">
+      <div class="month-controls" role="group" data-i18n-aria-label="monthNav.ariaLabel">
+        <button type="button" id="previous-month" data-i18n-aria-label="monthNav.prev">
           <span aria-hidden="true">‹</span>
         </button>
-        <button type="button" id="today">今天</button>
-        <button type="button" id="next-month" aria-label="下個月">
+        <button type="button" id="today" data-i18n="app.today">今天</button>
+        <button type="button" id="next-month" data-i18n-aria-label="monthNav.next">
           <span aria-hidden="true">›</span>
         </button>
       </div>
+
+      <div class="search-container" role="search">
+        <input
+          type="search"
+          id="event-search"
+          data-i18n-placeholder="search.placeholder"
+          data-i18n-aria-label="search.ariaLabel"
+          autocomplete="off"
+        />
+        <div id="search-results" class="search-results" hidden></div>
+      </div>
+
+      <button type="button" id="theme-toggle" data-i18n-aria-label="theme.toggleAria">
+        <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+      </button>
+
+      <button type="button" id="open-manage" data-i18n="manage.button">管理中心</button>
+
+      <button type="button" id="open-settings" class="settings-button" data-i18n-aria-label="settings.buttonAria">
+        <span class="settings-gear-icon" aria-hidden="true">⚙</span>
+      </button>
     </header>
 
     <div class="calendar-layout">
       <aside class="calendar-sidebar" aria-labelledby="calendar-sidebar-title">
         <div class="calendar-sidebar-content">
-          <h2 id="calendar-sidebar-title">日曆導覽</h2>
+          <h2 id="calendar-sidebar-title" data-i18n="sidebar.title">日曆導覽</h2>
 
           <section class="mini-calendar-panel" aria-labelledby="mini-calendar-title">
-            <h3 id="mini-calendar-title">迷你月曆</h3>
+            <h3 id="mini-calendar-title" data-i18n="sidebar.miniTitle">迷你月曆</h3>
             <div id="mini-calendar" aria-live="polite">
-              <p>迷你月曆準備中</p>
+              <p data-i18n="sidebar.miniLoading">迷你月曆準備中</p>
             </div>
           </section>
 
           <fieldset id="calendar-filters">
-            <legend>我的日曆</legend>
+            <legend data-i18n="sidebar.myCalendars">我的日曆</legend>
 
-            <label>
-              <input type="checkbox" value="personal" checked />
-              <span class="calendar-color" data-color="teal" aria-hidden="true"></span>
-              個人
-            </label>
-            <label>
-              <input type="checkbox" value="documents" checked />
-              <span class="calendar-color" data-color="orange" aria-hidden="true"></span>
-              證件續期
-            </label>
-            <label>
-              <input type="checkbox" value="medical" checked />
-              <span class="calendar-color" data-color="purple" aria-hidden="true"></span>
-              醫療
-            </label>
-            <label>
-              <input type="checkbox" value="family" checked />
-              <span class="calendar-color" data-color="green" aria-hidden="true"></span>
-              家庭
-            </label>
-            <label>
-              <input type="checkbox" value="work" checked />
-              <span class="calendar-color" data-color="blue" aria-hidden="true"></span>
-              工作
-            </label>
-            <label>
-              <input type="checkbox" value="other" checked />
-              <span class="calendar-color" data-color="gray" aria-hidden="true"></span>
-              其他
-            </label>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="personal" checked />
+                <span class="calendar-color" data-color="teal" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="personal">個人</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="personal">編輯</button>
+            </div>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="documents" checked />
+                <span class="calendar-color" data-color="orange" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="documents">證件續期</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="documents">編輯</button>
+            </div>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="medical" checked />
+                <span class="calendar-color" data-color="purple" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="medical">醫療</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="medical">編輯</button>
+            </div>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="family" checked />
+                <span class="calendar-color" data-color="green" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="family">家庭</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="family">編輯</button>
+            </div>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="work" checked />
+                <span class="calendar-color" data-color="blue" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="work">工作</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="work">編輯</button>
+            </div>
+            <div class="calendar-filter-row">
+              <label>
+                <input type="checkbox" value="other" checked />
+                <span class="calendar-color" data-color="gray" aria-hidden="true"></span>
+                <span class="calendar-label-text" data-calendar-id="other">其他</span>
+              </label>
+              <button type="button" class="edit-tag-button" data-edit-calendar="other">編輯</button>
+            </div>
           </fieldset>
 
           <button type="button" id="add-tag" class="add-tag-button">
             <span aria-hidden="true">＋</span>
-            新增標籤
+            <span data-i18n="sidebar.addTag">新增標籤</span>
           </button>
         </div>
 
@@ -87,38 +126,60 @@
           aria-hidden="true"
         >
           <header class="ai-schedule-header">
-            <h2 id="ai-schedule-title">AI 輸入日程</h2>
+            <h2 id="ai-schedule-title" data-i18n="ai.title">AI 輸入日程</h2>
             <button
               type="button"
               id="close-ai-schedule"
-              aria-label="收合 AI 輸入日程"
+              data-i18n-aria-label="ai.closeAria"
             >
               <span aria-hidden="true">×</span>
             </button>
           </header>
 
-          <label for="ai-schedule-input">描述日程</label>
+          <label for="ai-schedule-input" data-i18n="ai.describe">描述日程</label>
           <textarea
             id="ai-schedule-input"
             rows="7"
-            placeholder="例如：下週三下午三時看醫生"
+            data-i18n-placeholder="ai.placeholder"
           ></textarea>
           <p id="ai-schedule-error" class="form-error" role="alert" tabindex="-1" hidden></p>
-          <button type="button" id="analyze-ai-schedule">分析日程</button>
+          <button type="button" id="analyze-ai-schedule" data-i18n="ai.analyze">分析日程</button>
         </section>
       </aside>
 
       <main class="calendar-workspace">
         <section class="calendar" aria-labelledby="calendar-title">
-          <h2 id="calendar-title">月曆</h2>
+          <div class="calendar-title-wrapper">
+            <button type="button" id="calendar-title-button" class="calendar-title-button">
+              <h2 id="calendar-title" data-i18n="calendar.title">月曆</h2>
+            </button>
+            <div id="date-picker-popover" class="date-picker-popover" hidden>
+              <div class="date-picker-row">
+                <label for="date-picker-year" data-i18n="datePicker.year">年</label>
+                <select id="date-picker-year"></select>
+              </div>
+              <div class="date-picker-row">
+                <label for="date-picker-month" data-i18n="datePicker.month">月</label>
+                <select id="date-picker-month"></select>
+              </div>
+              <div class="date-picker-row">
+                <label for="date-picker-day" data-i18n="datePicker.day">日</label>
+                <select id="date-picker-day"></select>
+              </div>
+              <div class="date-picker-actions">
+                <button type="button" id="date-picker-cancel" data-i18n="datePicker.cancel">取消</button>
+                <button type="button" id="date-picker-confirm" class="primary-button" data-i18n="datePicker.confirm">跳轉</button>
+              </div>
+            </div>
+          </div>
           <div class="weekdays" aria-hidden="true">
-            <span>一</span>
-            <span>二</span>
-            <span>三</span>
-            <span>四</span>
-            <span>五</span>
-            <span>六</span>
-            <span>日</span>
+            <span data-i18n="weekday.mon">一</span>
+            <span data-i18n="weekday.tue">二</span>
+            <span data-i18n="weekday.wed">三</span>
+            <span data-i18n="weekday.thu">四</span>
+            <span data-i18n="weekday.fri">五</span>
+            <span data-i18n="weekday.sat">六</span>
+            <span data-i18n="weekday.sun">日</span>
           </div>
           <div
             id="calendar-grid"
@@ -126,7 +187,7 @@
             role="grid"
             aria-live="polite"
           >
-            <p class="empty-state">月曆準備中</p>
+            <p class="empty-state" data-i18n="calendar.loading">月曆準備中</p>
           </div>
         </section>
 
@@ -137,7 +198,7 @@
           aria-expanded="false"
         >
           <span class="ai-launcher-mark" aria-hidden="true">AI</span>
-          <span>輸入日程</span>
+          <span data-i18n="ai.launcher">輸入日程</span>
         </button>
       </main>
     </div>
@@ -145,19 +206,19 @@
     <dialog id="event-dialog" aria-labelledby="event-dialog-title">
       <form id="event-form" novalidate>
         <header class="dialog-header">
-          <h2 id="event-dialog-title">新增事件</h2>
-          <button type="button" id="close-event-dialog">關閉</button>
+          <h2 id="event-dialog-title" data-i18n="eventDialog.new">新增事件</h2>
+          <button type="button" id="close-event-dialog" data-i18n="eventDialog.close">關閉</button>
         </header>
 
         <p id="event-form-error" class="form-error" role="alert" tabindex="-1" hidden></p>
 
-        <label for="event-title">標題</label>
+        <label for="event-title" data-i18n="eventDialog.title">標題</label>
         <input id="event-title" name="title" type="text" required />
 
-        <label for="event-date">日期</label>
+        <label for="event-date" data-i18n="eventDialog.date">日期</label>
         <input id="event-date" name="date" type="date" required />
 
-        <label for="event-calendar">日曆</label>
+        <label for="event-calendar" data-i18n="eventDialog.calendar">日曆</label>
         <select id="event-calendar" name="calendarId">
           <option value="personal">個人</option>
           <option value="documents">證件續期</option>
@@ -169,25 +230,25 @@
 
         <div class="time-fields">
           <div>
-            <label for="event-start-time">開始時間</label>
+            <label for="event-start-time" data-i18n="eventDialog.startTime">開始時間</label>
             <input id="event-start-time" name="startTime" type="time" />
           </div>
           <div>
-            <label for="event-end-time">結束時間</label>
+            <label for="event-end-time" data-i18n="eventDialog.endTime">結束時間</label>
             <input id="event-end-time" name="endTime" type="time" />
           </div>
         </div>
 
-        <label for="event-notes">備註</label>
+        <label for="event-notes" data-i18n="eventDialog.notes">備註</label>
         <textarea id="event-notes" name="notes" rows="4"></textarea>
 
         <footer class="dialog-actions">
-          <button type="button" id="delete-event" class="danger-button" hidden>
+          <button type="button" id="delete-event" class="danger-button" hidden data-i18n="eventDialog.delete">
             刪除
           </button>
           <div>
-            <button type="button" id="cancel-event">取消</button>
-            <button type="submit">儲存</button>
+            <button type="button" id="cancel-event" data-i18n="eventDialog.cancel">取消</button>
+            <button type="submit" data-i18n="eventDialog.save">儲存</button>
           </div>
         </footer>
       </form>
@@ -196,30 +257,96 @@
     <dialog id="tag-dialog" aria-labelledby="tag-dialog-title">
       <form id="tag-form" novalidate>
         <header class="dialog-header">
-          <h2 id="tag-dialog-title">新增標籤</h2>
-          <button type="button" id="close-tag-dialog">關閉</button>
+          <h2 id="tag-dialog-title" data-i18n="tagDialog.new">新增標籤</h2>
+          <button type="button" id="close-tag-dialog" data-i18n="eventDialog.close">關閉</button>
         </header>
 
         <p id="tag-form-error" class="form-error" role="alert" tabindex="-1" hidden></p>
 
-        <label for="tag-name">標籤名稱</label>
+        <input type="hidden" id="tag-edit-id" name="editId" value="" />
+
+        <label for="tag-name" data-i18n="tagDialog.name">標籤名稱</label>
         <input id="tag-name" name="name" type="text" required maxlength="20" />
 
-        <label>標籤顏色</label>
+        <label data-i18n="tagDialog.color">標籤顏色</label>
         <div
           id="tag-color-palette"
           class="tag-color-palette"
           role="radiogroup"
-          aria-label="標籤顏色"
+          data-i18n-aria-label="tagDialog.colorAria"
         ></div>
 
         <footer class="dialog-actions">
           <div>
-            <button type="button" id="cancel-tag">取消</button>
-            <button type="submit">儲存</button>
+            <button type="button" id="cancel-tag" data-i18n="eventDialog.cancel">取消</button>
+            <button type="submit" data-i18n="eventDialog.save">儲存</button>
           </div>
         </footer>
       </form>
+    </dialog>
+
+    <dialog id="ai-batch-dialog" aria-labelledby="ai-batch-dialog-title">
+      <header class="dialog-header">
+        <h2 id="ai-batch-dialog-title" data-i18n="batchDialog.title">確認批次新增事件</h2>
+        <button type="button" id="close-ai-batch-dialog" data-i18n="eventDialog.close">關閉</button>
+      </header>
+      <div class="batch-dialog-body">
+        <p class="batch-dialog-hint" data-i18n="batchDialog.hint">以下事件將被新增到日曆：</p>
+        <ul id="ai-batch-list" class="batch-event-list"></ul>
+        <footer class="dialog-actions">
+          <div>
+            <button type="button" id="cancel-ai-batch" data-i18n="batchDialog.cancel">取消</button>
+            <button type="button" id="confirm-ai-batch" class="primary-button" data-i18n="batchDialog.confirm">全部新增</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog id="manage-dialog" class="manage-dialog" aria-labelledby="manage-dialog-title">
+      <header class="manage-header">
+        <h2 id="manage-dialog-title" data-i18n="manage.title">管理中心</h2>
+        <button type="button" id="close-manage-dialog" data-i18n-aria-label="manage.closeAria">×</button>
+      </header>
+      <nav class="manage-tabs" role="tablist">
+        <button type="button" id="manage-tab-events" class="manage-tab" role="tab" aria-selected="true" data-i18n="manage.events">事件管理</button>
+        <button type="button" id="manage-tab-tags" class="manage-tab" role="tab" aria-selected="false" data-i18n="manage.tags">標籤管理</button>
+      </nav>
+      <div id="manage-events-panel" class="manage-panel" role="tabpanel">
+        <div id="manage-event-list" class="manage-list"></div>
+      </div>
+      <div id="manage-tags-panel" class="manage-panel" role="tabpanel" hidden>
+        <div id="manage-tag-list" class="manage-list"></div>
+      </div>
+    </dialog>
+
+    <dialog id="settings-dialog" aria-labelledby="settings-dialog-title">
+      <header class="dialog-header">
+        <h2 id="settings-dialog-title" data-i18n="settings.title">設定</h2>
+        <button type="button" id="close-settings-dialog" data-i18n="settings.close">關閉</button>
+      </header>
+      <div class="settings-body">
+        <div class="settings-row">
+          <label for="settings-language" data-i18n="settings.language">語言</label>
+          <select id="settings-language">
+            <option value="zh-TW">繁體中文</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.theme">主題</span>
+          <div class="settings-theme-options">
+            <label>
+              <input type="radio" name="settings-theme" value="light" checked />
+              <span data-i18n="settings.light">亮色</span>
+            </label>
+            <label>
+              <input type="radio" name="settings-theme" value="dark" />
+              <span data-i18n="settings.dark">暗色</span>
+            </label>
+          </div>
+        </div>
+      </div>
     </dialog>
 
     <script type="module" src="js/app.js"></script>

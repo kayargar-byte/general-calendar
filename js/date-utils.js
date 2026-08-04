@@ -1,12 +1,8 @@
-const WEEKDAY_LABELS = [
-  "星期日",
-  "星期一",
-  "星期二",
-  "星期三",
-  "星期四",
-  "星期五",
-  "星期六",
-];
+import {
+  MONTH_LABELS,
+  WEEKDAY_LABELS_FULL,
+  getCurrentLanguage,
+} from "./i18n.js";
 
 function padNumber(value) {
   return String(value).padStart(2, "0");
@@ -21,15 +17,32 @@ export function toDateKey(date) {
 }
 
 export function formatMonthTitle(year, monthIndex) {
-  return `${year}年${monthIndex + 1}月`;
+  const lang = getCurrentLanguage();
+  const months = MONTH_LABELS[lang] ?? MONTH_LABELS["zh-TW"];
+  const monthLabel = months[monthIndex] ?? `${monthIndex + 1}月`;
+
+  if (lang === "en") {
+    return `${monthLabel} ${year}`;
+  }
+
+  return `${year}年${monthLabel}`;
 }
 
 export function formatDateLabel(date) {
+  const lang = getCurrentLanguage();
+  const months = MONTH_LABELS[lang] ?? MONTH_LABELS["zh-TW"];
+  const weekdays = WEEKDAY_LABELS_FULL[lang] ?? WEEKDAY_LABELS_FULL["zh-TW"];
   const year = date.getFullYear();
-  const month = date.getMonth() + 1;
+  const monthIndex = date.getMonth();
   const day = date.getDate();
+  const weekday = weekdays[date.getDay()] ?? "";
+  const monthLabel = months[monthIndex] ?? `${monthIndex + 1}月`;
 
-  return `${year}年${month}月${day}日 ${WEEKDAY_LABELS[date.getDay()]}`;
+  if (lang === "en") {
+    return `${weekday}, ${monthLabel} ${day}, ${year}`;
+  }
+
+  return `${year}年${monthLabel}${day}日 ${weekday}`;
 }
 
 export function buildMonthGrid(year, monthIndex) {

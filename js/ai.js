@@ -1,4 +1,3 @@
-import { CALENDARS } from "./calendar-catalog.js";
 import { toDateKey } from "./date-utils.js";
 
 let AI_CONFIG = null;
@@ -22,7 +21,6 @@ const WEEKDAY_LABELS = [
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DEFAULT_CALENDAR_IDS = new Set(CALENDARS.map((calendar) => calendar.id));
 
 function isValidDateKey(value) {
   const match = DATE_PATTERN.exec(value);
@@ -44,13 +42,13 @@ function isValidDateKey(value) {
   );
 }
 
-function buildSystemPrompt() {
+function buildSystemPrompt(calendars) {
   const today = new Date();
   const todayKey = toDateKey(today);
   const weekday = WEEKDAY_LABELS[today.getDay()];
-  const categoryList = CALENDARS.map(
-    (calendar) => `- ${calendar.id}：${calendar.label}`,
-  ).join("\n");
+  const categoryList = calendars
+    .map((calendar) => `- ${calendar.id}：${calendar.label}`)
+    .join("\n");
 
   return [
     "你是一個日曆助手。用戶會用自然語言描述日程，請將其解析為結構化的日曆事件。",
@@ -66,8 +64,9 @@ function buildSystemPrompt() {
     "日曆分類（calendarId）請從以下選擇最貼切的：",
     categoryList,
     "",
-    '只返回一個 JSON 物件，不要加任何說明文字或 markdown 格式符號：',
-    '{"title":"事件標題","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註"}',
+    "只返回一個 JSON 陣列，不要加任何說明文字或 markdown 格式符號：",
+    '[{"title":"事件標題","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註"}]',
+    "若用戶只描述一個事件，仍返回包含一個物件的陣列。",
   ].join("\n");
 }
 
@@ -89,7 +88,18 @@ function extractJson(content) {
   try {
     return JSON.parse(content);
   } catch {
-    // fall through to brace extraction
+    // fall through to extraction
+  }
+
+  const arrayStart = content.indexOf("[");
+  const arrayEnd = content.lastIndexOf("]");
+
+  if (arrayStart !== -1 && arrayEnd > arrayStart) {
+    try {
+      return JSON.parse(content.slice(arrayStart, arrayEnd + 1));
+    } catch {
+      // fall through to object extraction
+    }
   }
 
   const start = content.indexOf("{");
@@ -106,8 +116,8 @@ function extractJson(content) {
   return null;
 }
 
-function normalizeParsedEvent(parsed) {
-  if (!parsed || typeof parsed !== "object") {
+function normalizeParsedEvent(parsed, validCalendarIds) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return null;
   }
 
@@ -131,7 +141,7 @@ function normalizeParsedEvent(parsed) {
 
   const calendarId =
     typeof parsed.calendarId === "string" &&
-    DEFAULT_CALENDAR_IDS.has(parsed.calendarId)
+    validCalendarIds.has(parsed.calendarId)
       ? parsed.calendarId
       : "personal";
 
@@ -139,6 +149,24 @@ function normalizeParsedEvent(parsed) {
     typeof parsed.notes === "string" ? parsed.notes.trim() : "";
 
   return { title: title || "未命名事件", date, startTime, endTime, calendarId, notes };
+}
+
+export function normalizeParsedEvents(parsed, validCalendarIds) {
+  if (Array.isArray(parsed)) {
+    const events = parsed
+      .map((entry) => normalizeParsedEvent(entry, validCalendarIds))
+      .filter(Boolean);
+
+    return events;
+  }
+
+  const single = normalizeParsedEvent(parsed, validCalendarIds);
+
+  if (!single) {
+    return [];
+  }
+
+  return [single];
 }
 
 function extractTextFromContent(content) {
@@ -152,7 +180,7 @@ function extractTextFromContent(content) {
     .join("");
 }
 
-export async function parseSchedule(text) {
+export async function parseSchedule(text, calendars) {
   const trimmedText = typeof text === "string" ? text.trim() : "";
 
   if (!trimmedText) {
@@ -162,6 +190,9 @@ export async function parseSchedule(text) {
   if (!AI_CONFIG) {
     throw new Error("尚未設定 AI API 金鑰，請複製 js/config.example.js 為 js/config.js 並填入金鑰。");
   }
+
+  const calendarList = Array.isArray(calendars) ? calendars : [];
+  const validCalendarIds = new Set(calendarList.map((calendar) => calendar.id));
 
   let response;
 
@@ -174,7 +205,7 @@ export async function parseSchedule(text) {
       body: JSON.stringify({
         model: AI_CONFIG.model,
         max_tokens: 1024,
-        system: buildSystemPrompt(),
+        system: buildSystemPrompt(calendarList),
         messages: [{ role: "user", content: trimmedText }],
       }),
     });
@@ -205,11 +236,11 @@ export async function parseSchedule(text) {
   const data = await response.json();
   const content = extractTextFromContent(data?.content);
   const parsed = extractJson(content);
-  const event = normalizeParsedEvent(parsed);
+  const events = normalizeParsedEvents(parsed, validCalendarIds);
 
-  if (!event) {
+  if (events.length === 0) {
     throw new Error("AI 無法解析此日程，請嘗試更具體的描述。");
   }
 
-  return event;
+  return events;
 }

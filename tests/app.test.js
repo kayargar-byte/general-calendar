@@ -84,8 +84,16 @@ class Element {
 
   reset() {}
 
+  getAttribute(name) {
+    return this.attributes[name] ?? null;
+  }
+
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
   }
 
   showModal() {
@@ -128,6 +136,7 @@ function createAppFixture() {
       return [];
     },
   };
+  document.documentElement = new Element(document);
   const createElement = (selector) => {
     const element = new Element(document);
     selectors.set(selector, element);
@@ -181,6 +190,40 @@ function createAppFixture() {
     "#tag-name",
     "#tag-color-palette",
     "#tag-form-error",
+    "#tag-dialog-title",
+    "#tag-edit-id",
+    "#theme-toggle",
+    "#event-search",
+    "#search-results",
+    "#ai-batch-dialog",
+    "#ai-batch-dialog-title",
+    "#close-ai-batch-dialog",
+    "#cancel-ai-batch",
+    "#confirm-ai-batch",
+    "#ai-batch-list",
+    "#open-manage",
+    "#manage-dialog",
+    "#manage-dialog-title",
+    "#close-manage-dialog",
+    "#manage-tab-events",
+    "#manage-tab-tags",
+    "#manage-events-panel",
+    "#manage-tags-panel",
+    "#manage-event-list",
+    "#manage-tag-list",
+    "#open-settings",
+    "#settings-dialog",
+    "#settings-dialog-title",
+    "#close-settings-dialog",
+    "#settings-language",
+    "#calendar-title-button",
+    "#date-picker-popover",
+    "#date-picker-year",
+    "#date-picker-month",
+    "#date-picker-day",
+    "#date-picker-confirm",
+    "#date-picker-cancel",
+    ".calendar-workspace",
   ];
 
   requiredSelectors.forEach(createElement);
@@ -188,6 +231,8 @@ function createAppFixture() {
   selectors.get("#event-dialog").queries = { form: eventForm };
   const tagForm = new Element(document);
   selectors.get("#tag-dialog").queries = { form: tagForm };
+  const aiBatchForm = new Element(document);
+  selectors.get("#ai-batch-dialog").queries = { form: aiBatchForm };
 
   return {
     closeButton: selectors.get("#close-ai-schedule"),

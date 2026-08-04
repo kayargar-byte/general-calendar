@@ -3,6 +3,7 @@ import {
   formatDateLabel,
   toDateKey,
 } from "./date-utils.js";
+import { t } from "./i18n.js";
 
 export function buildCalendarView(
   year,
@@ -66,7 +67,7 @@ export function renderCalendar(
     dateButton.className = "calendar-date";
     dateButton.dataset.date = day.dateKey;
     dateButton.textContent = String(day.dayNumber);
-    dateButton.setAttribute("aria-label", `新增 ${day.label} 的事件`);
+    dateButton.setAttribute("aria-label", t("event.addDateAria", { label: day.label }));
     dateButton.addEventListener("click", () =>
       onDateSelect(day.dateKey, dateButton),
     );
@@ -93,7 +94,7 @@ export function renderCalendar(
         }
 
         eventButton.textContent = summary;
-        eventButton.setAttribute("aria-label", `查看事件：${summary}`);
+        eventButton.setAttribute("aria-label", t("event.viewEventAria", { summary }));
         eventButton.addEventListener("click", () =>
           onEventSelect(event.id, eventButton),
         );
@@ -124,7 +125,7 @@ export function renderMiniCalendar(
     dateButton.className = "mini-calendar-date";
     dateButton.dataset.date = day.dateKey;
     dateButton.textContent = String(day.dayNumber);
-    dateButton.setAttribute("aria-label", `新增 ${day.label} 的事件`);
+    dateButton.setAttribute("aria-label", t("event.addDateAria", { label: day.label }));
 
     if (!day.isCurrentMonth) {
       dateButton.classList.add("is-outside-month");
