@@ -55,4 +55,3 @@ export async function ackImport(id) {
   });
   return (await readResponse(response)).ok === true;
 }
-
