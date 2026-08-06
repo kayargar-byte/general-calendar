@@ -35,6 +35,11 @@ const expandedCategoryIds = ref([]);
 const interestsText = ref("");
 const identity = ref({ occupation: "", ageGroup: "", region: "" });
 
+// 子分支暫時移除（見 interest-catalog.js 註解）期間，無任何子分支時整棵選擇樹隱藏，只留自訂文字框。
+const hasInterestCategories = INTEREST_CATEGORIES.some(
+  (category) => category.subBranches.length > 0,
+);
+
 // 開啟時重讀最新分類與已存畫像，回填表單（資料層見 src/lib/user-profile.js）。
 function populate() {
   calendars.value = getCalendars();
@@ -241,7 +246,7 @@ onMounted(() => {
         </label>
       </div>
 
-      <div class="profile-field">
+      <div v-if="hasInterestCategories" class="profile-field">
         <span class="profile-field-label">興趣（大分類可多選）</span>
         <div id="interest-categories" class="interest-categories">
           <section

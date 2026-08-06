@@ -21,10 +21,11 @@ test("interest categories each have a unique id, label, and at least one sub-bra
     labels.add(category.label);
 
     assert.ok(Array.isArray(category.subBranches));
-    assert.ok(
-      category.subBranches.length > 0,
-      `「${category.label}」沒有小分支`,
-    );
+    // 子分支暫時移除（2026-08-06），恢復時取消註解：
+    // assert.ok(
+    //   category.subBranches.length > 0,
+    //   `「${category.label}」沒有小分支`,
+    // );
 
     for (const subBranch of category.subBranches) {
       assert.equal(typeof subBranch, "string");
@@ -36,24 +37,25 @@ test("interest categories each have a unique id, label, and at least one sub-bra
   }
 });
 
-test("sub-branch labels are unique across all categories", () => {
-  const seen = new Set();
-
-  for (const category of INTEREST_CATEGORIES) {
-    for (const subBranch of category.subBranches) {
-      assert.ok(!seen.has(subBranch), `子分支跨域重複：${subBranch}`);
-      seen.add(subBranch);
-    }
-  }
-
-  // 導出集合與實際清單一致，避免兩者不同步。
-  assert.equal(seen.size, INTEREST_SUB_BRANCH_LABELS.size);
-});
-
-test("INTEREST_SUB_BRANCH_LABELS contains every sub-branch label", () => {
-  for (const category of INTEREST_CATEGORIES) {
-    for (const subBranch of category.subBranches) {
-      assert.ok(INTEREST_SUB_BRANCH_LABELS.has(subBranch));
-    }
-  }
-});
+// 子分支暫時移除（2026-08-06）期間註解，恢復子分支時取消註解：
+// test("sub-branch labels are unique across all categories", () => {
+//   const seen = new Set();
+//
+//   for (const category of INTEREST_CATEGORIES) {
+//     for (const subBranch of category.subBranches) {
+//       assert.ok(!seen.has(subBranch), `子分支跨域重複：${subBranch}`);
+//       seen.add(subBranch);
+//     }
+//   }
+//
+//   // 導出集合與實際清單一致，避免兩者不同步。
+//   assert.equal(seen.size, INTEREST_SUB_BRANCH_LABELS.size);
+// });
+//
+// test("INTEREST_SUB_BRANCH_LABELS contains every sub-branch label", () => {
+//   for (const category of INTEREST_CATEGORIES) {
+//     for (const subBranch of category.subBranches) {
+//       assert.ok(INTEREST_SUB_BRANCH_LABELS.has(subBranch));
+//     }
+//   }
+// });

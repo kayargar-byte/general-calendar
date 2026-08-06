@@ -74,63 +74,64 @@ test("SettingsDialog saves an empty profile when nothing is filled", async () =>
   });
 });
 
-test("SettingsDialog saves selected interest sub-branches into the profile", async () => {
-  const wrapper = await mountDialog();
-
-  // 展開「醫療健康」並勾選兩個小分支。
-  await wrapper.find('[data-category-id="medical"]').trigger("click");
-  await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
-  await wrapper.find('[data-interest-label="健康檢查"] input').setValue(true);
-
-  await wrapper.find("#save-profile").trigger("click");
-
-  assert.deepEqual(getProfile().interests, ["疫苗接種", "健康檢查"]);
-});
-
-test("SettingsDialog merges picker selections with custom text and deduplicates", async () => {
-  const wrapper = await mountDialog();
-
-  await wrapper.find('[data-category-id="medical"]').trigger("click");
-  await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
-  // 自訂文字與勾選相同項應去重。
-  await wrapper.find("#profile-interests").setValue("疫苗接種\n葡語學習");
-
-  await wrapper.find("#save-profile").trigger("click");
-
-  assert.deepEqual(getProfile().interests, ["疫苗接種", "葡語學習"]);
-});
-
-test("SettingsDialog repopulates the picker and keeps custom text separate", async () => {
-  const wrapper = await mountDialog();
-
-  await wrapper.find('[data-category-id="medical"]').trigger("click");
-  await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
-  await wrapper.find("#profile-interests").setValue("葡語學習");
-  await wrapper.find("#save-profile").trigger("click");
-
-  await wrapper.setProps({ open: false });
-  await wrapper.setProps({ open: true });
-  await flushPromises();
-
-  // 勾選回填在 picker（大分支因有勾選而展開）；自訂留在文字框。
-  assert.ok(
-    wrapper.find('[data-interest-label="疫苗接種"] input').element.checked,
-  );
-  assert.equal(wrapper.find("#profile-interests").element.value, "葡語學習");
-});
-
-test("SettingsDialog selects all sub-branches of a category with the all toggle", async () => {
-  const wrapper = await mountDialog();
-
-  await wrapper.find('[data-category-id="culture"]').trigger("click");
-  await wrapper.find(".interest-category-all").trigger("click");
-
-  await wrapper.find("#save-profile").trigger("click");
-
-  assert.deepEqual(getProfile().interests, [
-    "展覽／博物館",
-    "演唱會／音樂",
-    "電影／戲劇",
-    "藝文課程",
-  ]);
-});
+// 子分支暫時移除（2026-08-06）期間註解，恢復子分支時取消註解：
+// test("SettingsDialog saves selected interest sub-branches into the profile", async () => {
+//   const wrapper = await mountDialog();
+//
+//   // 展開「醫療健康」並勾選兩個小分支。
+//   await wrapper.find('[data-category-id="medical"]').trigger("click");
+//   await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
+//   await wrapper.find('[data-interest-label="健康檢查"] input').setValue(true);
+//
+//   await wrapper.find("#save-profile").trigger("click");
+//
+//   assert.deepEqual(getProfile().interests, ["疫苗接種", "健康檢查"]);
+// });
+//
+// test("SettingsDialog merges picker selections with custom text and deduplicates", async () => {
+//   const wrapper = await mountDialog();
+//
+//   await wrapper.find('[data-category-id="medical"]').trigger("click");
+//   await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
+//   // 自訂文字與勾選相同項應去重。
+//   await wrapper.find("#profile-interests").setValue("疫苗接種\n葡語學習");
+//
+//   await wrapper.find("#save-profile").trigger("click");
+//
+//   assert.deepEqual(getProfile().interests, ["疫苗接種", "葡語學習"]);
+// });
+//
+// test("SettingsDialog repopulates the picker and keeps custom text separate", async () => {
+//   const wrapper = await mountDialog();
+//
+//   await wrapper.find('[data-category-id="medical"]').trigger("click");
+//   await wrapper.find('[data-interest-label="疫苗接種"] input').setValue(true);
+//   await wrapper.find("#profile-interests").setValue("葡語學習");
+//   await wrapper.find("#save-profile").trigger("click");
+//
+//   await wrapper.setProps({ open: false });
+//   await wrapper.setProps({ open: true });
+//   await flushPromises();
+//
+//   // 勾選回填在 picker（大分支因有勾選而展開）；自訂留在文字框。
+//   assert.ok(
+//     wrapper.find('[data-interest-label="疫苗接種"] input').element.checked,
+//   );
+//   assert.equal(wrapper.find("#profile-interests").element.value, "葡語學習");
+// });
+//
+// test("SettingsDialog selects all sub-branches of a category with the all toggle", async () => {
+//   const wrapper = await mountDialog();
+//
+//   await wrapper.find('[data-category-id="culture"]').trigger("click");
+//   await wrapper.find(".interest-category-all").trigger("click");
+//
+//   await wrapper.find("#save-profile").trigger("click");
+//
+//   assert.deepEqual(getProfile().interests, [
+//     "展覽／博物館",
+//     "演唱會／音樂",
+//     "電影／戲劇",
+//     "藝文課程",
+//   ]);
+// });
