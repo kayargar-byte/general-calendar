@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
 
 $keyFile = Join-Path $PSScriptRoot '..\server\.desktop-key'
-$analyzeEndpoint = 'http://localhost:3000/api/documents/analyze'
+$importsEndpoint = 'http://localhost:3000/api/imports'
 
 if (-not (Test-Path -LiteralPath $keyFile)) {
     [System.Windows.Forms.MessageBox]::Show(
@@ -32,11 +32,10 @@ foreach ($file in $FilePath) {
         continue
     }
 
-    curl.exe -sS -o NUL -X POST `
+    curl.exe --fail-with-body -sS -o NUL -X POST `
         -H "X-Proxy-Key: $proxyKey" `
-        -H "X-Stash: 1" `
         -F "file=@$file" `
-        $analyzeEndpoint
+        $importsEndpoint
 
     if ($LASTEXITCODE -ne 0) {
         [System.Windows.Forms.MessageBox]::Show(

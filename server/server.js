@@ -9,6 +9,11 @@ import {
 } from "./extractors.js";
 import { runSearchToolLoop } from "./search-tools.js";
 import { ackImport, getPendingImports, pushImport } from "./inbox.js";
+import { createImportQueue } from "./import-queue.js";
+import {
+  documentUploadErrorStatus,
+  handleImportHttpRequest,
+} from "./import-http.js";
 
 let AI_CONFIG = null;
 
@@ -23,6 +28,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
+const importQueue = createImportQueue({ concurrency: 3 });
 
 // 記憶體態的最近畫像摘要快取：瀏覽器在搜索／匯入時推入，桌面右鍵匯入（X-Stash 不帶 profile）共用（見 docs/adr/0008）。
 let lastProfile = "";
@@ -155,7 +161,7 @@ function enforceSecurity(req, res) {
   return true;
 }
 
-async function handleDocumentAnalyze(req, res) {
+async function readDocumentUpload(req) {
   let mimeType = "";
   let filename = "";
   let calendars = [];
@@ -198,13 +204,15 @@ async function handleDocumentAnalyze(req, res) {
   });
 
   if (exceededLimit) {
-    reject(res, 413, "檔案超過 10MB 上限。");
-    return;
+    const error = new Error("檔案超過 10MB 上限。");
+    error.code = "FILE_TOO_LARGE";
+    throw error;
   }
 
   if (fileChunks.length === 0) {
-    reject(res, 400, "未收到檔案。");
-    return;
+    const error = new Error("未收到檔案。");
+    error.code = "FILE_REQUIRED";
+    throw error;
   }
 
   const buffer = Buffer.concat(fileChunks);
@@ -214,37 +222,54 @@ async function handleDocumentAnalyze(req, res) {
     lastProfile = profile;
   }
 
+  assertFileSize(buffer.length);
+  return {
+    buffer,
+    calendars,
+    docName: filename,
+    mimeType,
+    profile: lastProfile,
+  };
+}
+
+async function analyzeUploadedDocument(upload) {
+  return analyzeDocument({
+    mimeType: upload.mimeType,
+    filename: upload.docName,
+    buffer: upload.buffer,
+    calendars: upload.calendars,
+    profile: upload.profile,
+    aiConfig: AI_CONFIG,
+  });
+}
+
+async function handleDocumentAnalyze(req, res) {
+
   try {
-    assertFileSize(buffer.length);
-    const { events, extractedText } = await analyzeDocument({
-      mimeType,
-      filename,
-      buffer,
-      calendars,
-      profile: lastProfile,
-      aiConfig: AI_CONFIG,
-    });
+    const upload = await readDocumentUpload(req);
+    const { events, extractedText } = await analyzeUploadedDocument(upload);
 
     // 桌面右鍵匯入（X-Stash）：抽取結果一併放入收件箱供瀏覽器輪詢（見 docs/adr/0008）。
     if (req.headers["x-stash"] === "1") {
-      pushImport({ events, extractedText, docName: filename, mimeType });
+      pushImport({
+        events,
+        extractedText,
+        docName: upload.docName,
+        mimeType: upload.mimeType,
+      });
     }
 
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(
-      JSON.stringify({ events, extractedText, docName: filename, mimeType }),
+      JSON.stringify({
+        events,
+        extractedText,
+        docName: upload.docName,
+        mimeType: upload.mimeType,
+      }),
     );
   } catch (err) {
-    const status =
-      err?.code === "FILE_TOO_LARGE"
-        ? 413
-        : err?.code === "UNSUPPORTED_TYPE"
-          ? 400
-          : err?.code === "SCANNED_PDF" ||
-              err?.code === "EMPTY_CONTENT" ||
-              err?.code === "NO_EVENTS"
-            ? 422
-            : 502;
+    const status = documentUploadErrorStatus(err);
     reject(res, status, err?.message ?? "文件分析失敗。");
   }
 }
@@ -264,7 +289,7 @@ function handleAckImport(res, id) {
   res.end(JSON.stringify({ ok: true }));
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // CORS：僅對白名單內的來源回應 ACAO。自訂標頭 X-Proxy-Key 觸發 preflight，
   // 攔截任意網站驅動本地代理——multipart 屬「簡單請求」無 preflight，單靠 origin 擋不住副作用。
   const origin = req.headers.origin;
@@ -305,6 +330,33 @@ const server = http.createServer((req, res) => {
 
     if (urlPath === "/api/documents/analyze" && req.method === "POST") {
       handleDocumentAnalyze(req, res);
+      return;
+    }
+  }
+
+  if (urlPath === "/api/imports" || urlPath.startsWith("/api/imports/")) {
+    if (!AI_CONFIG && urlPath === "/api/imports" && req.method === "POST") {
+      reject(
+        res,
+        503,
+        "尚未設定 API 金鑰，請複製 server/config.example.js 為 server/config.js 並填入金鑰。",
+      );
+      return;
+    }
+
+    if (!enforceSecurity(req, res)) {
+      return;
+    }
+
+    const handled = await handleImportHttpRequest({
+      req,
+      res,
+      queue: importQueue,
+      readUpload: readDocumentUpload,
+      analyzeUpload: analyzeUploadedDocument,
+    });
+
+    if (handled) {
       return;
     }
   }
