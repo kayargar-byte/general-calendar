@@ -17,6 +17,7 @@ import SettingsDialog from "./components/SettingsDialog.vue";
 import DatePickerPopover from "./components/DatePickerPopover.vue";
 import ImportDocumentButton from "./components/ImportDocumentButton.vue";
 import ImportBanner from "./components/ImportBanner.vue";
+import MacaoOneAccountImportDialog from "./components/MacaoOneAccountImportDialog.vue";
 
 const {
   monthTitle,
@@ -69,6 +70,7 @@ const calendarWorkspaceRef = ref(null);
 const isManageOpen = ref(false);
 const isSettingsOpen = ref(false);
 const isDatePickerOpen = ref(false);
+const isMacaoOneAccountImportOpen = ref(false);
 const { theme, toggleTheme } = useTheme();
 
 // 桌面右鍵匯入收件箱輪詢（瀏覽器必須開啟，見 docs/adr/0008）。
@@ -100,6 +102,10 @@ function handleCreateEvent() {
     today.getMonth() === visibleMonth.value.getMonth();
   const date = isCurrentMonth ? today : visibleMonth.value;
   openCreateEventDialog(toDateKey(date));
+}
+
+async function handleMacaoOneAccountFile(file) {
+  await importDocument(file);
 }
 
 const monthTransitionName = computed(() =>
@@ -238,6 +244,14 @@ onUnmounted(() => {
     @close="closeImportBanner"
   />
 
+  <MacaoOneAccountImportDialog
+    :open="isMacaoOneAccountImportOpen"
+    :busy="isImporting"
+    :error="importError"
+    @file="handleMacaoOneAccountFile"
+    @close="isMacaoOneAccountImportOpen = false"
+  />
+
   <div
     class="calendar-layout"
     :class="{ 'is-ai-schedule-open': isAiScheduleOpen }"
@@ -261,6 +275,7 @@ onUnmounted(() => {
           @remove-tag="removeCalendar"
           @update-tag="updateCalendarTag"
           @reorder-tags="reorderCalendars"
+          @macao-import="isMacaoOneAccountImportOpen = true"
         />
       </div>
 

@@ -2,7 +2,7 @@
 // server/config.js 已被 .gitignore 排除，不會進入版本庫。
 export const AI_CONFIG = {
   // DeepSeek 官方 API 金鑰（文本／搜索用）
-  apiKey: "sk-你的-deepseek-key",
+  apiKey: "",
   // DeepSeek Anthropic 兼容端點（支援 /v1/messages 與原生 web_search 伺服器端執行）
   remoteEndpoint: "https://api.deepseek.com/anthropic/v1/messages",
   // 文本模型（deepseek-v4-flash：純文字最快）
@@ -12,7 +12,7 @@ export const AI_CONFIG = {
   // 視覺模型端點（OpenAI 兼容，接受 base64 image_url；deepseek 無多模態，識圖須走此端點）
   visionEndpoint: "https://www.micuapi.ai/v1/chat/completions",
   // 視覺模型金鑰（中轉站 key，與文本 key 分開）
-  visionApiKey: "sk-你的-micuapi-key",
+  visionApiKey: "",
   // 視覺模型名稱（terra 支援視覺理解；luna 在中轉站 vip_2 分組無渠道，勿用）
   visionModel: "gpt-5.6-terra",
   // Serper 搜尋 API 金鑰（deepseek 原生 web_search 後暫未使用，保留作回退；免卡註冊）
@@ -27,5 +27,17 @@ export const AI_CONFIG = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:4173",
+    "http://localhost:5174",
   ],
 };
+
+// 僅在啟動本機代理的進程中提供密鑰，避免將密鑰寫入專案檔案。
+const sessionDeepSeekKey = process.env.DEEPSEEK_API_KEY?.trim();
+if (sessionDeepSeekKey) {
+  AI_CONFIG.apiKey = sessionDeepSeekKey;
+}
+
+const sessionVisionKey = process.env.VISION_API_KEY?.trim();
+if (sessionVisionKey) {
+  AI_CONFIG.visionApiKey = sessionVisionKey;
+}

@@ -1545,6 +1545,229 @@ dialog::backdrop {
   box-shadow: inset 0 0 0 2px var(--color-accent);
 }
 
+.macao-one-account-import {
+  width: 100%;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
+  border-radius: var(--radius-pill);
+  color: var(--color-accent);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.macao-one-account-import:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+#macao-one-account-import-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 26px 28px 22px;
+}
+
+.macao-import-eyebrow,
+.macao-import-step-number,
+.macao-import-current-step {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.macao-import-current-step {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.macao-import-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 0;
+  margin: 22px 0 26px;
+  list-style: none;
+}
+
+.macao-import-progress li {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.macao-import-progress span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.macao-import-progress .is-current,
+.macao-import-progress .is-done {
+  color: var(--color-accent);
+}
+
+.macao-import-progress .is-current span,
+.macao-import-progress .is-done span {
+  border-color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+.macao-import-step {
+  display: grid;
+  gap: 10px;
+  min-height: 212px;
+}
+
+.macao-import-step h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.macao-import-step > p:not(.macao-import-step-number):not(.macao-import-error) {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.macao-import-hint {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
+  font-size: 13px;
+}
+
+.macao-import-primary,
+.macao-import-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.macao-import-primary {
+  border: 1px solid var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+.macao-import-primary:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--color-accent-hover);
+}
+
+.macao-import-secondary {
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: transparent;
+}
+
+.macao-import-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.macao-import-actions > * {
+  flex: 1;
+}
+
+.macao-import-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-danger, #b42318);
+  background: color-mix(in srgb, #b42318 8%, transparent);
+  font-size: 13px;
+}
+
+.macao-import-complete {
+  align-content: center;
+}
+
+#macao-one-account-import-dialog .dialog-actions {
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+#macao-one-account-import-dialog .dialog-actions p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+#close-macao-one-account-import {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
+  font-size: 18px;
+  line-height: 1;
+}
+
+#close-macao-one-account-import:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-text) 10%);
+}
+
+.macao-import-intro {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.macao-import-notes {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0 0 20px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#choose-macao-one-account-file {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+#choose-macao-one-account-file:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+#choose-macao-one-account-file:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 /* 工具列動作群組：主題／管理中心／設定／月份導覽 */
 .toolbar-actions {
   display: flex;

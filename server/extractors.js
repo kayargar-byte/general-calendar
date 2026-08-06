@@ -197,7 +197,36 @@ function cleanEvents(parsed) {
 }
 
 // 文本分析走 Anthropic 兼容端點（與 /api/ai 相同）。
+async function callMultimodalTextAi({ system, userText, aiConfig }) {
+  const response = await fetch(aiConfig.visionEndpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${aiConfig.visionApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: aiConfig.visionModel,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userText },
+      ],
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `多模态模型回應錯誤（${response.status}）。`);
+  }
+
+  return data?.choices?.[0]?.message?.content ?? "";
+}
+
 async function callTextAi({ system, userText, aiConfig }) {
+  if (!aiConfig.apiKey?.trim()) {
+    return callMultimodalTextAi({ system, userText, aiConfig });
+  }
+
   const response = await fetch(aiConfig.remoteEndpoint, {
     method: "POST",
     headers: {

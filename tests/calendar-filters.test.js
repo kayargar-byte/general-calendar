@@ -24,6 +24,21 @@ test("emits add-tag with the trimmed label", async () => {
   assert.equal(wrapper.emitted("add-tag")?.[0]?.[0], "寵物");
 });
 
+test("renders the Macao One Account import entry below the calendar tags", async () => {
+  const wrapper = mount(CalendarFilters, {
+    props: { calendars, visibleCalendarIds },
+  });
+
+  const entry = wrapper.find("#macao-one-account-import");
+
+  assert.ok(entry.exists());
+  assert.equal(entry.text(), "一戶通資料匯入");
+
+  await entry.trigger("click");
+
+  assert.ok(wrapper.emitted("macao-import"));
+});
+
 test("shows an error for empty and duplicate labels without emitting", async () => {
   const wrapper = mount(CalendarFilters, {
     props: { calendars, visibleCalendarIds },

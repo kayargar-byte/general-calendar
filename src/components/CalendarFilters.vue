@@ -13,6 +13,7 @@ const emit = defineEmits([
   "remove-tag",
   "reorder-tags",
   "update-tag",
+  "macao-import",
 ]);
 
 const addingTag = ref(false);
@@ -189,6 +190,15 @@ function cancelAddTag() {
         </span>
       </span>
     </label>
+
+    <button
+      type="button"
+      id="macao-one-account-import"
+      class="macao-one-account-import"
+      @click="emit('macao-import')"
+    >
+      一戶通資料匯入
+    </button>
   </fieldset>
 
   <TagEditDialog

@@ -85,6 +85,39 @@ test("analyzeDocument extracts events from a real DOCX with quotes", async () =>
   assert.match(extractedText, /下周三下午三時在衛生局覆診/);
 });
 
+test("analyzeDocument uses the multimodal endpoint for documents when no text-model key is available", async () => {
+  let requestedUrl = "";
+  let requestedOptions;
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url, options) => {
+      requestedUrl = url;
+      requestedOptions = options;
+      return mockVisionResponse(
+        '[{"title":"覆診","date":"2026-08-06","startTime":"15:00","endTime":"16:00","calendarId":"medical","notes":"","quote":"下週三下午三時在衛生局覆診"}]',
+      );
+    }),
+  );
+
+  const { events } = await analyzeDocument({
+    mimeType: DOCX_MIME,
+    filename: "sample.docx",
+    buffer: loadFixture("sample.docx"),
+    calendars: CALENDARS,
+    aiConfig: { ...AI_CONFIG, apiKey: "" },
+  });
+
+  const requestBody = JSON.parse(requestedOptions.body);
+  assert.equal(requestedUrl, AI_CONFIG.visionEndpoint);
+  assert.equal(requestedOptions.headers.Authorization, "Bearer vision-test-key");
+  assert.equal(requestBody.model, "test-vision");
+  assert.equal(requestBody.messages[0].role, "system");
+  assert.equal(requestBody.messages[1].role, "user");
+  assert.match(requestBody.messages[1].content, /下周三下午三時/);
+  assert.equal(events[0].title, "覆診");
+});
+
 test("analyzeDocument passes through a multi-day endDate from the AI response", async () => {
   vi.stubGlobal(
     "fetch",
