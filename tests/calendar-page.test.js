@@ -18,11 +18,12 @@ const calendarStylesPath = resolve(
 );
 
 const calendarIds = [
-  "personal",
-  "documents",
-  "medical",
-  "family",
   "work",
+  "family",
+  "medical",
+  "documents",
+  "allowances",
+  "leisure",
   "other",
 ];
 
@@ -100,8 +101,8 @@ test("calendar page renders each calendar category twice and enables controls", 
   const checkboxes = wrapper.findAll("#calendar-filters input[type='checkbox']");
   const options = wrapper.findAll("#event-calendar option");
 
-  assert.equal(checkboxes.length, 6);
-  assert.equal(options.length, 6);
+  assert.equal(checkboxes.length, 7);
+  assert.equal(options.length, 7);
 
   for (const calendarId of calendarIds) {
     assert.ok(
@@ -178,7 +179,7 @@ test("calendar page renders a multi-day event as a bar, not in day lists", () =>
     title: "展覽",
     date: toDateKey(start),
     endDate: toDateKey(end),
-    calendarId: "personal",
+    calendarId: "leisure",
     startTime: "09:00",
     endTime: "18:00",
     notes: "",

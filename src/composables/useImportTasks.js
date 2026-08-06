@@ -8,6 +8,7 @@ import {
 import { buildProfile, profileToText } from "../lib/user-profile.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 500;
+const LOCAL_INGEST_FAILURE = "\u532f\u5165\u5931\u6557\uff0c\u8acb\u91cd\u8a66\u3002";
 
 const defaultApi = { submitImport, listImports, retryImport, ackImport };
 
@@ -30,12 +31,13 @@ export function useImportTasks({
   const tasks = ref([]);
   const animationRequests = ref([]);
   const localFiles = new Map();
+  const localIngestFailures = new Map();
   const processing = new Set();
   let pollTimer = null;
   let polling = false;
 
   const visibleTasks = computed(() => {
-    const priority = { COMPLETED: 0, FAILED: 1, ANALYZING: 2 };
+    const priority = { COMPLETED: 0, ANALYZING: 1, FAILED: 2 };
     return tasks.value
       .filter((task) => task.status !== "QUEUED")
       .sort((first, second) => {
@@ -49,6 +51,33 @@ export function useImportTasks({
   const queuedCount = computed(
     () => tasks.value.filter((task) => task.status === "QUEUED").length,
   );
+
+  const overflowCount = computed(
+    () =>
+      Math.max(
+        0,
+        tasks.value.filter((task) => task.status !== "QUEUED").length -
+          visibleTasks.value.length,
+      ),
+  );
+
+  const hiddenTaskCount = computed(() => overflowCount.value);
+
+  function localIngestError(error) {
+    const message = error instanceof Error ? error.message.trim() : "";
+    return message ? message.slice(0, 120) : LOCAL_INGEST_FAILURE;
+  }
+
+  function markLocalIngestFailure(task, error) {
+    const message = localIngestError(error);
+    localIngestFailures.set(task.id, message);
+    processing.delete(task.id);
+    tasks.value = tasks.value.map((current) =>
+      current.id === task.id
+        ? { ...current, status: "FAILED", error: message }
+        : current,
+    );
+  }
 
   async function ingestCompleted(task) {
     if (processing.has(task.id)) {
@@ -66,9 +95,11 @@ export function useImportTasks({
       });
 
       if (!imported) {
-        processing.delete(task.id);
+        markLocalIngestFailure(task);
         return;
       }
+
+      localIngestFailures.delete(task.id);
 
       animationRequests.value = [
         ...animationRequests.value,
@@ -78,8 +109,8 @@ export function useImportTasks({
           events: task.events,
         },
       ];
-    } catch {
-      processing.delete(task.id);
+    } catch (error) {
+      markLocalIngestFailure(task, error);
     }
   }
 
@@ -90,13 +121,18 @@ export function useImportTasks({
 
     polling = true;
     try {
-      tasks.value = await api.listImports();
+      tasks.value = (await api.listImports()).map((task) => {
+        const error = localIngestFailures.get(task.id);
+        return error ? { ...task, status: "FAILED", error } : task;
+      });
 
       for (const task of tasks.value) {
         if (task.status === "COMPLETED") {
           await ingestCompleted(task);
         }
       }
+    } catch {
+      // The rail keeps its current state until the next polling attempt.
     } finally {
       polling = false;
     }
@@ -123,6 +159,12 @@ export function useImportTasks({
   }
 
   async function retryTask(id) {
+    if (localIngestFailures.has(id)) {
+      const task = tasks.value.find((item) => item.id === id);
+      if (task) await ingestCompleted(task);
+      return;
+    }
+
     const retried = await api.retryImport(id);
     tasks.value = tasks.value.map((task) =>
       task.id === id ? retried : task,
@@ -133,6 +175,7 @@ export function useImportTasks({
     await api.ackImport(id);
     tasks.value = tasks.value.filter((task) => task.id !== id);
     localFiles.delete(id);
+    localIngestFailures.delete(id);
     processing.delete(id);
   }
 
@@ -143,6 +186,7 @@ export function useImportTasks({
       (request) => request.taskId !== id,
     );
     localFiles.delete(id);
+    localIngestFailures.delete(id);
     processing.delete(id);
   }
 
@@ -166,6 +210,8 @@ export function useImportTasks({
     tasks,
     visibleTasks,
     queuedCount,
+    overflowCount,
+    hiddenTaskCount,
     animationRequests,
     submitFiles,
     refresh,

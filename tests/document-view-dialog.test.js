@@ -93,7 +93,7 @@ test("renders rule-split text with highlighted quote sections and related events
   createEvent({
     title: "覆診",
     date: "2026-08-06",
-    calendarId: "personal",
+    calendarId: "medical",
     sourceDocId: "doc-1",
     sourceQuote: "下周三下午三時在衛生局覆診",
   });

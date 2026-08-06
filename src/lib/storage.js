@@ -13,7 +13,7 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const SAMPLE_EVENTS = [
   {
     title: "示例事件1",
-    calendarId: "personal",
+    calendarId: "leisure",
     dayOffset: 2,
     startTime: "09:00",
     endTime: "10:00",

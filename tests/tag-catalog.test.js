@@ -25,14 +25,14 @@ class MemoryStorage {
   }
 }
 
-test("getCalendars seeds the six default tags when storage is empty", () => {
+test("getCalendars seeds the seven default tags when storage is empty", () => {
   const storage = new MemoryStorage();
   const calendars = getCalendars(storage);
 
-  assert.equal(calendars.length, 6);
+  assert.equal(calendars.length, 7);
   assert.deepEqual(
     calendars.map((calendar) => calendar.id),
-    ["personal", "documents", "medical", "family", "work", "other"],
+    ["work", "family", "medical", "documents", "allowances", "leisure", "other"],
   );
 });
 
@@ -50,8 +50,8 @@ test("createCalendar rejects empty and duplicate labels", () => {
   const storage = new MemoryStorage();
 
   assert.throws(() => createCalendar("   ", storage), /不可為空/);
-  assert.throws(() => createCalendar("個人", storage), /已存在/);
-  assert.equal(getCalendars(storage).length, 6);
+  assert.throws(() => createCalendar("工作", storage), /已存在/);
+  assert.equal(getCalendars(storage).length, 7);
 });
 
 test("deleteCalendar removes the tag", () => {
@@ -83,12 +83,12 @@ test("updateCalendar renames and recolors a custom tag", () => {
 test("updateCalendar can rename a built-in tag", () => {
   const storage = new MemoryStorage();
 
-  const updated = updateCalendar("personal", "我的個人", "#112233", storage);
+  const updated = updateCalendar("work", "我的工作", "#112233", storage);
 
-  assert.equal(updated.label, "我的個人");
+  assert.equal(updated.label, "我的工作");
   assert.equal(
-    getCalendars(storage).find((item) => item.id === "personal").label,
-    "我的個人",
+    getCalendars(storage).find((item) => item.id === "work").label,
+    "我的工作",
   );
 });
 
@@ -110,7 +110,7 @@ test("updateCalendar rejects empty and duplicate labels", () => {
     /不可為空/,
   );
   assert.throws(
-    () => updateCalendar(calendar.id, "個人", "#ff00aa", storage),
+    () => updateCalendar(calendar.id, "工作", "#ff00aa", storage),
     /已存在/,
   );
   assert.equal(
@@ -122,7 +122,7 @@ test("updateCalendar rejects empty and duplicate labels", () => {
 test("isCalendarId validates against the current tags", () => {
   const storage = new MemoryStorage();
 
-  assert.equal(isCalendarId("personal", storage), true);
+  assert.equal(isCalendarId("work", storage), true);
   assert.equal(isCalendarId("missing", storage), false);
 });
 

@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCalendar } from "./composables/useCalendar.js";
 import { useTheme } from "./composables/useTheme.js";
-import { useDesktopImports } from "./composables/useDesktopImports.js";
+import { useImportTasks } from "./composables/useImportTasks.js";
 import { toDateKey } from "./lib/date-utils.js";
 import { getEvents } from "./lib/storage.js";
 import CalendarGrid from "./components/CalendarGrid.vue";
@@ -18,6 +18,8 @@ import DatePickerPopover from "./components/DatePickerPopover.vue";
 import ImportDocumentButton from "./components/ImportDocumentButton.vue";
 import ImportBanner from "./components/ImportBanner.vue";
 import MacaoOneAccountImportDialog from "./components/MacaoOneAccountImportDialog.vue";
+import ImportTaskRail from "./components/ImportTaskRail.vue";
+import ImportEnergyOverlay from "./components/ImportEnergyOverlay.vue";
 
 const {
   monthTitle,
@@ -67,6 +69,7 @@ const {
 const aiScheduleLauncherRef = ref(null);
 const aiSchedulePanelRef = ref(null);
 const calendarWorkspaceRef = ref(null);
+const importTaskRailRef = ref(null);
 const isManageOpen = ref(false);
 const isSettingsOpen = ref(false);
 const isDatePickerOpen = ref(false);
@@ -74,7 +77,20 @@ const isMacaoOneAccountImportOpen = ref(false);
 const { theme, toggleTheme } = useTheme();
 
 // 桌面右鍵匯入收件箱輪詢（瀏覽器必須開啟，見 docs/adr/0008）。
-useDesktopImports({ importAnalyzedResult, isImporting });
+const {
+  visibleTasks,
+  queuedCount,
+  overflowCount,
+  animationRequests,
+  submitFiles,
+  retryTask,
+  dismissTask,
+  animationStarted,
+} = useImportTasks({ calendars, importAnalyzedResult });
+
+function getImportTaskRect(taskId) {
+  return importTaskRailRef.value?.getTaskRect(taskId) ?? null;
+}
 
 function handleDatePickerConfirm({ year, monthIndex }) {
   isDatePickerOpen.value = false;
@@ -205,7 +221,15 @@ onUnmounted(() => {
       新增事件
     </button>
 
-    <ImportDocumentButton :busy="isImporting" @file="importDocument" />
+    <ImportDocumentButton @files="submitFiles" />
+    <ImportTaskRail
+      ref="importTaskRailRef"
+      :tasks="visibleTasks"
+      :queued-count="queuedCount"
+      :overflow-count="overflowCount"
+      @retry="retryTask"
+      @dismiss="dismissTask"
+    />
 
     <EventSearch :calendars="calendars" @select="navigateToEvent" />
 
@@ -380,4 +404,11 @@ onUnmounted(() => {
   />
 
   <SettingsDialog :open="isSettingsOpen" @close="isSettingsOpen = false" />
+
+  <ImportEnergyOverlay
+    :requests="animationRequests"
+    :visible-month="visibleMonth"
+    :get-source-rect="getImportTaskRect"
+    @started="animationStarted"
+  />
 </template>

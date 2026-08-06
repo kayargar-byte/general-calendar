@@ -4,7 +4,7 @@ import { ref } from "vue";
 defineProps({
   busy: { type: Boolean, default: false },
 });
-const emit = defineEmits(["file"]);
+const emit = defineEmits(["files"]);
 
 const fileInputRef = ref(null);
 
@@ -13,10 +13,10 @@ function openFilePicker() {
 }
 
 function handleFileChange(event) {
-  const file = event.target.files?.[0];
+  const files = Array.from(event.target.files ?? []);
 
-  if (file) {
-    emit("file", file);
+  if (files.length > 0) {
+    emit("files", files);
   }
 
   // 重置 input，讓同一文件可以再次選擇
@@ -28,7 +28,6 @@ function handleFileChange(event) {
   <button
     type="button"
     id="import-document"
-    :disabled="busy"
     @click="openFilePicker"
   >
     <span aria-hidden="true">⇪</span>
@@ -39,6 +38,7 @@ function handleFileChange(event) {
     id="import-document-input"
     type="file"
     style="display: none"
+    multiple
     accept=".docx,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.gif,.bmp"
     @change="handleFileChange"
   />

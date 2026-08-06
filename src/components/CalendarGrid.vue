@@ -99,6 +99,7 @@ function hideSourceQuote() {
     :key="day.dateKey"
     class="calendar-day"
     :data-date="day.dateKey"
+    :data-date-key="day.dateKey"
     role="gridcell"
     :class="{
       'is-outside-month': !day.isCurrentMonth,

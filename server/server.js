@@ -1,16 +1,15 @@
 import fs from "node:fs";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import busboy from "busboy";
 import {
   assertFileSize,
   analyzeDocument,
-  MAX_FILE_BYTES,
 } from "./extractors.js";
 import { runSearchToolLoop } from "./search-tools.js";
 import { ackImport, getPendingImports, pushImport } from "./inbox.js";
 import { createImportQueue } from "./import-queue.js";
 import {
+  createDocumentUploadParser,
   documentUploadErrorStatus,
   handleImportHttpRequest,
 } from "./import-http.js";
@@ -170,10 +169,7 @@ async function readDocumentUpload(req) {
   const fileChunks = [];
 
   await new Promise((resolve, rejectPromise) => {
-    const bb = busboy({
-      headers: req.headers,
-      limits: { files: 1, fileSize: MAX_FILE_BYTES },
-    });
+    const bb = createDocumentUploadParser(req.headers);
 
     bb.on("file", (name, file, info) => {
       mimeType = info.mimeType;

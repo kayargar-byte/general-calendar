@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createImportQueue } from "../server/import-queue.js";
 import {
+  createDocumentUploadParser,
   documentUploadErrorStatus,
   handleImportHttpRequest,
 } from "../server/import-http.js";
@@ -32,6 +33,42 @@ async function settleQueue() {
   await Promise.resolve();
   await Promise.resolve();
 }
+
+async function parseMultipartFilename(body, headers) {
+  return new Promise((resolve, reject) => {
+    let filename = "";
+    const parser = createDocumentUploadParser(headers);
+
+    parser.on("file", (_name, file, info) => {
+      filename = info.filename;
+      file.resume();
+    });
+    parser.on("error", reject);
+    parser.on("close", () => resolve(filename));
+    parser.end(body);
+  });
+}
+
+test("parses raw UTF-8 multipart filenames without mojibake", async () => {
+  const boundary = "----calendar-upload";
+  const filename = "一戶通智能日曆_設計摘要.docx";
+  const body = Buffer.from(
+    `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+      "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n" +
+      "\r\n" +
+      "document bytes\r\n" +
+      `--${boundary}--\r\n`,
+    "utf8",
+  );
+
+  const parsedFilename = await parseMultipartFilename(
+    body,
+    { "content-type": `multipart/form-data; boundary=${boundary}` },
+  );
+
+  assert.equal(parsedFilename, filename);
+});
 
 test("POST /api/imports enqueues an uploaded document and returns 202", async () => {
   const queue = createImportQueue();

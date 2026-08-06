@@ -40,18 +40,19 @@ test("createEvent normalizes and persists an event", () => {
   const event = createEvent(buildEvent({ title: "  證件續期  " }), storage);
 
   assert.equal(event.title, "證件續期");
-  assert.equal(event.calendarId, "personal");
+  assert.equal(event.calendarId, "work");
   assert.match(event.id, /^[0-9a-f-]+$/i);
   assert.deepEqual(getEvents(storage), [event]);
 });
 
 test("createEvent preserves supported calendar categories", () => {
   const calendarIds = [
-    "personal",
-    "documents",
-    "medical",
-    "family",
     "work",
+    "family",
+    "medical",
+    "documents",
+    "allowances",
+    "leisure",
     "other",
   ];
 
@@ -271,13 +272,13 @@ test("getEvents safely ignores damaged stored data", () => {
   assert.deepEqual(getEvents(storage), []);
 });
 
-test("getEvents assigns legacy events to the personal calendar", () => {
+test("getEvents assigns legacy events to the first default calendar", () => {
   const storage = new MemoryStorage();
   const legacyEvent = { id: "legacy-event", ...buildEvent() };
 
   storage.setItem(STORAGE_KEY, JSON.stringify([legacyEvent]));
 
-  assert.equal(getEvents(storage)[0].calendarId, "personal");
+  assert.equal(getEvents(storage)[0].calendarId, "work");
 });
 
 test("getEvents fills endDate with an empty string for legacy events", () => {

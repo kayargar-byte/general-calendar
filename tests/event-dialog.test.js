@@ -325,7 +325,7 @@ test("EventDialog prefills endDate when editing a multi-day event", async () => 
     title: "展覽",
     date: "2026-08-14",
     endDate: "2026-08-16",
-    calendarId: "personal",
+    calendarId: "leisure",
     startTime: "09:00",
     endTime: "18:00",
     notes: "",

@@ -136,7 +136,7 @@ function buildAnalyzePrompt(calendars, isSpreadsheet, profile = "") {
     tableRule,
     "",
     "只返回一個 JSON 陣列，不要加任何說明文字或 markdown 格式符號：",
-    '[{"title":"事件標題","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註","quote":"支持此事件的原文段落（節錄原文文字）"}]',
+    '[{"title":"事件標題","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"work","notes":"備註","quote":"支持此事件的原文段落（節錄原文文字）"}]',
     "quote 必須節錄自文檔原文，不得自行編造。若無對應原文，quote 留空字串。",
   ].join("\n");
 }

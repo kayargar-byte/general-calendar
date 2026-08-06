@@ -50,11 +50,12 @@ function isValidDateKey(value) {
 
 // 內建分類的語義提示，輔助模型歸類；自訂分類無固定語義，僅列 id：label。
 const CATEGORY_HINTS = {
-  personal: "個人日常與私人行程",
-  documents: "證件／政府文件的續期與截止（身份證、護照、簽證、稅單等）",
+  work: "工作、會議、學業、培訓等公務事項",
+  family: "親子、家務與家人相關事項",
   medical: "就醫、覆診、疫苗、健康檢查等醫療事項",
-  family: "家庭活動與家務事項",
-  work: "工作、會議、學業等公務事項",
+  documents: "政府證件／文件（身份證、護照、簽證、稅單）的續期與截止",
+  allowances: "政府津貼／福利的申請、續期與到期",
+  leisure: "社交聚會、娛樂、運動、旅遊、購物等個人活動",
   other: "無法歸入以上分類的其他事項",
 };
 
@@ -87,7 +88,7 @@ function buildSearchSystemPrompt(calendars, profileText = "") {
     "日曆分類（calendarId）規則：",
     "- calendarId 只能從下列清單選取；不得自創、不得改寫清單中的 id。",
     "- 依事件內容與清單定義選最貼切的分類；同時符合多個時，選最主要的一個。",
-    "- 外部搜尋結果無法確定歸類時選 other；personal 保留給用戶已知的個人行程，勿用作默認。",
+    "- 外部搜尋結果無法確定歸類時選 other，不得以其他 id 作默認。",
     "日曆分類清單：",
     categoryList,
     "",
@@ -112,7 +113,7 @@ function buildSearchSystemPrompt(calendars, profileText = "") {
     "- 依搜尋結果回答；不得編造 URL 或日期；搜尋不到才明說。",
     "",
     "輸出格式：只回傳一個 JSON 物件，不要加任何說明文字或 markdown 格式符號。",
-    '{"type":"events","events":[{"title":"事件標題","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註","sourceUrl":"來源網頁 URL","sourceTitle":"來源標題","sourceSnippet":"來源摘錄"}],"candidates":[...],"recommendations":[{"topic":"相關主題","reason":"簡短理由"}],"explanation":"..."}',
+    '{"type":"events","events":[{"title":"事件標題","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"work","notes":"備註","sourceUrl":"來源網頁 URL","sourceTitle":"來源標題","sourceSnippet":"來源摘錄"}],"candidates":[...],"recommendations":[{"topic":"相關主題","reason":"簡短理由"}],"explanation":"..."}',
     "- events 為確認可直接入曆的事件；搜尋結果有多個候選或來源低置信時，把事件放 candidates 供用戶選擇、events 留空。",
     "- recommendations 為相關未問主題的建議；無相關主題時留空陣列。",
     "- 完全沒有日期錨點時，events 與 candidates 皆為空陣列，用 explanation 說明為何找不到可排程內容。",
@@ -244,7 +245,7 @@ function normalizeParsedEvent(parsed, validCalendarIds) {
     typeof parsed.calendarId === "string" &&
     validCalendarIds.has(parsed.calendarId)
       ? parsed.calendarId
-      : "personal";
+      : "other";
 
   const notes =
     typeof parsed.notes === "string" ? parsed.notes.trim() : "";

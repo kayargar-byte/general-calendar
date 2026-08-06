@@ -1,11 +1,15 @@
-export const DEFAULT_CALENDAR_ID = "personal";
+// 內建分類以「生活領域」為單一維度，各分類互不重疊：任何事件應有唯一歸屬。
+// 「個人」原先等於第二個「其他」（catch-all），已移除；個人活動歸入休閒。
+// DEFAULT_CALENDAR_ID 只在分類清單為空時兜底。
+export const DEFAULT_CALENDAR_ID = "other";
 
 export const DEFAULT_CALENDARS = [
-  { id: "personal", label: "個人", color: "#078da0" },
-  { id: "documents", label: "證件續期", color: "#e97816" },
-  { id: "medical", label: "醫療", color: "#7857b3" },
-  { id: "family", label: "家庭", color: "#459b38" },
   { id: "work", label: "工作", color: "#3478c7" },
+  { id: "family", label: "家庭", color: "#459b38" },
+  { id: "medical", label: "醫療", color: "#7857b3" },
+  { id: "documents", label: "證件", color: "#e97816" },
+  { id: "allowances", label: "津貼", color: "#d63384" },
+  { id: "leisure", label: "休閒", color: "#0b7285" },
   { id: "other", label: "其他", color: "#70757e" },
 ];
 

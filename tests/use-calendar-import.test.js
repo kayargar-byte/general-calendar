@@ -172,8 +172,8 @@ test("importAnalyzedResult writes events, doc record, blob, and text", async () 
   assert.equal(ok, true);
   const events = getEvents();
   assert.equal(events.length, 1);
-  // 未知分類回落 personal（見 docs/adr/0008）
-  assert.equal(events[0].calendarId, "personal");
+  // 未知分類回落 other（見 docs/adr/0008）
+  assert.equal(events[0].calendarId, "other");
   assert.equal(events[0].sourceQuote, "下周三覆診");
   assert.equal(getDocuments().length, 1);
   assert.equal(importCount.value, 1);
@@ -224,7 +224,7 @@ test("importAnalyzedResult does not store a blob when none is provided", async (
 });
 
 test("importAnalyzedResult maps an unknown calendarId to the first user calendar", async () => {
-  // 用戶自訂分類不含預設的 personal（右鍵抽取不帶分類時模型常回 personal）。
+  // 用戶自訂分類不含任何預設分類（右鍵抽取不帶分類時模型常回無效分類）。
   saveCalendars([{ id: "jj", label: "jj", color: "#00897b" }]);
   installFakeIndexedDB();
   const { importAnalyzedResult } = useCalendar();

@@ -177,7 +177,7 @@ test("lists imported documents with their event counts", async () => {
   createEvent({
     title: "覆診",
     date: "2026-08-06",
-    calendarId: "personal",
+    calendarId: "medical",
     sourceDocId: "doc-1",
     sourceQuote: "",
   });
@@ -201,7 +201,7 @@ test("deletes a document and its events after confirmation", async () => {
   createEvent({
     title: "覆診",
     date: "2026-08-06",
-    calendarId: "personal",
+    calendarId: "medical",
     sourceDocId: "doc-1",
     sourceQuote: "",
   });
@@ -273,7 +273,7 @@ test("emits jump-to-event when a related event is clicked in the viewer", async 
   const event = createEvent({
     title: "覆診",
     date: "2026-08-06",
-    calendarId: "personal",
+    calendarId: "medical",
     sourceDocId: "doc-1",
     sourceQuote: "",
   });

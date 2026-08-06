@@ -361,7 +361,7 @@ export function useCalendar() {
     }
   }
 
-  // 匯入已抽取的事件結果：先以用戶分類歸一（未知分類回落 personal），再逐筆入曆，
+  // 匯入已抽取的事件結果：先以用戶分類歸一（未知分類回落 other），再逐筆入曆，
   // 建立文檔紀錄並存原檔／統一文本。拖曳上傳（blob=原檔）與右鍵收件箱（無 blob）
   // 共用此路徑（見 docs/adr/0008）。
   async function importAnalyzedResult({
@@ -372,8 +372,8 @@ export function useCalendar() {
     blob,
   }) {
     const calendarIds = new Set(calendars.value.map((calendar) => calendar.id));
-    const fallbackCalendarId = calendars.value[0]?.id ?? "personal";
-    // 抽取結果的 calendarId 可能不在用戶分類清單（右鍵匯入不帶分類，模型常回傳 personal），
+    const fallbackCalendarId = calendars.value[0]?.id ?? "other";
+    // 抽取結果的 calendarId 可能不在用戶分類清單（右鍵匯入不帶分類，模型常回傳無效分類），
     // 入庫前對映到用戶第一個分類，避免 createEvent 因無效分類把整批事件丟棄（見 docs/adr/0008）。
     const normalized = normalizeParsedEvents(events, calendarIds).map((event) =>
       calendarIds.has(event.calendarId)

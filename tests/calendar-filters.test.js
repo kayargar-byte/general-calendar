@@ -49,7 +49,7 @@ test("shows an error for empty and duplicate labels without emitting", async () 
   await wrapper.find("#new-calendar-tag-input").trigger("keydown.enter");
   assert.match(wrapper.find(".tag-add-error").text(), /不可為空/);
 
-  await wrapper.find("#new-calendar-tag-input").setValue("個人");
+  await wrapper.find("#new-calendar-tag-input").setValue("工作");
   await wrapper.find("#new-calendar-tag-input").trigger("keydown.enter");
   assert.match(wrapper.find(".tag-add-error").text(), /已存在/);
 
@@ -72,7 +72,7 @@ test("disables removal when only one tag remains", () => {
   const wrapper = mount(CalendarFilters, {
     props: {
       calendars: calendars.slice(0, 1),
-      visibleCalendarIds: new Set(["personal"]),
+      visibleCalendarIds: new Set(["work"]),
     },
   });
 
@@ -122,7 +122,7 @@ test("App reorders tags when dragged and persists the order", async () => {
       .findAll("#calendar-filters label")
       .map((label) => label.find(".tag-row-label").text());
 
-  assert.deepEqual(labels(), ["個人", "證件續期", "醫療", "家庭", "工作", "其他"]);
+  assert.deepEqual(labels(), ["工作", "家庭", "醫療", "證件", "津貼", "休閒", "其他"]);
 
   await wrapper.find('label[data-calendar-id="work"]').trigger("dragstart");
   await wrapper
@@ -133,14 +133,14 @@ test("App reorders tags when dragged and persists the order", async () => {
     .trigger("drop");
   await nextTick();
 
-  assert.deepEqual(labels(), ["個人", "證件續期", "工作", "家庭", "醫療", "其他"]);
+  assert.deepEqual(labels(), ["醫療", "家庭", "工作", "證件", "津貼", "休閒", "其他"]);
 
   const persisted = JSON.parse(
     localStorage.getItem("general-calendar.calendars.v1"),
   );
   assert.deepEqual(
     persisted.map((calendar) => calendar.id),
-    ["personal", "documents", "work", "family", "medical", "other"],
+    ["medical", "family", "work", "documents", "allowances", "leisure", "other"],
   );
 
   wrapper.unmount();
@@ -238,7 +238,7 @@ test("shows an error for duplicate labels without emitting", async () => {
     .trigger("click");
   await nextTick();
 
-  await wrapper.find("#tag-edit-name").setValue("個人");
+  await wrapper.find("#tag-edit-name").setValue("工作");
   await wrapper.find("#tag-edit-form").trigger("submit");
 
   assert.match(wrapper.find("#tag-edit-error").text(), /已存在/);
@@ -265,7 +265,7 @@ test("App renames a tag and persists it", async () => {
       .findAll("#calendar-filters label")
       .map((label) => label.find(".tag-row-label").text());
 
-  assert.deepEqual(labels(), ["個人", "證件續期", "門診", "家庭", "工作", "其他"]);
+  assert.deepEqual(labels(), ["工作", "家庭", "門診", "證件", "津貼", "休閒", "其他"]);
 
   const persisted = JSON.parse(
     localStorage.getItem("general-calendar.calendars.v1"),

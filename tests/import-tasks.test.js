@@ -154,8 +154,71 @@ test("shows at most three actionable tasks and counts queued tasks", async () =>
   await state.refresh();
 
   assert.equal(state.visibleTasks.value.length, 3);
-  assert.equal(state.visibleTasks.value[0].id, "failed");
+  assert.equal(state.visibleTasks.value[0].id, "active-1");
   assert.equal(state.queuedCount.value, 2);
+  wrapper.unmount();
+});
+
+test("keeps a completed task visible ahead of concurrent analyses", async () => {
+  const imports = [
+    task({ id: "analyzing-1" }),
+    task({ id: "analyzing-2" }),
+    task({ id: "analyzing-3" }),
+    task({
+      id: "completed",
+      status: "COMPLETED",
+      completedAt: "2026-08-06T00:00:03.000Z",
+    }),
+  ];
+  const api = {
+    submitImport: vi.fn(),
+    listImports: vi.fn().mockResolvedValue(imports),
+    retryImport: vi.fn(),
+    ackImport: vi.fn(),
+  };
+  const { state, wrapper } = mountImportTasks({
+    api,
+    importAnalyzedResult: vi.fn().mockResolvedValue(true),
+  });
+
+  await state.refresh();
+
+  assert.deepEqual(
+    state.visibleTasks.value.map((item) => item.id),
+    ["completed", "analyzing-1", "analyzing-2"],
+  );
+  assert.equal(state.overflowCount.value, 1);
+  assert.equal(state.hiddenTaskCount.value, 1);
+  wrapper.unmount();
+});
+
+test("keeps overflowed failed tasks actionable after dismissing a visible failure", async () => {
+  const failedTasks = ["one", "two", "three", "four"].map((id) =>
+    task({ id, status: "FAILED", error: "bad" }),
+  );
+  const api = {
+    submitImport: vi.fn(),
+    listImports: vi.fn().mockResolvedValue(failedTasks),
+    retryImport: vi.fn(),
+    ackImport: vi.fn().mockResolvedValue(true),
+  };
+  const { state, wrapper } = mountImportTasks({ api });
+
+  await state.refresh();
+
+  assert.deepEqual(
+    state.visibleTasks.value.map((item) => item.id),
+    ["one", "two", "three"],
+  );
+  assert.equal(state.overflowCount.value, 1);
+  assert.equal(state.hiddenTaskCount.value, 1);
+
+  await state.dismissTask("one");
+
+  assert.deepEqual(
+    state.visibleTasks.value.map((item) => item.id),
+    ["two", "three", "four"],
+  );
   wrapper.unmount();
 });
 
@@ -176,5 +239,80 @@ test("retries and dismisses failed tasks through the API", async () => {
   state.tasks.value = [failed];
   await state.dismissTask("failed");
   assert.deepEqual(state.tasks.value, []);
+  wrapper.unmount();
+});
+
+test("keeps the task rail usable when a refresh request fails", async () => {
+  const api = {
+    submitImport: vi.fn(),
+    listImports: vi.fn().mockRejectedValue(new Error("offline")),
+    retryImport: vi.fn(),
+    ackImport: vi.fn(),
+  };
+  const { state, wrapper } = mountImportTasks({ api });
+
+  await assert.doesNotReject(state.refresh());
+  assert.deepEqual(state.tasks.value, []);
+  wrapper.unmount();
+});
+
+test("keeps a local ingest failure failed without polling it again and retries locally", async () => {
+  const completed = task({
+    id: "completed",
+    status: "COMPLETED",
+    completedAt: "2026-08-06T00:00:03.000Z",
+    events: [{ date: "2026-08-12" }],
+  });
+  const api = {
+    submitImport: vi.fn(),
+    listImports: vi.fn().mockResolvedValue([completed]),
+    retryImport: vi.fn(),
+    ackImport: vi.fn().mockResolvedValue(true),
+  };
+  const importAnalyzedResult = vi
+    .fn()
+    .mockResolvedValueOnce(false)
+    .mockResolvedValueOnce(true);
+  const { state, wrapper } = mountImportTasks({ api, importAnalyzedResult });
+
+  await state.refresh();
+  await state.refresh();
+
+  assert.equal(state.tasks.value[0].status, "FAILED");
+  assert.match(state.tasks.value[0].error, /\u532f\u5165\u5931\u6557/);
+  assert.equal(importAnalyzedResult.mock.calls.length, 1);
+
+  await state.retryTask("completed");
+
+  assert.equal(api.retryImport.mock.calls.length, 0);
+  assert.equal(importAnalyzedResult.mock.calls.length, 2);
+  assert.equal(state.animationRequests.value.length, 1);
+
+  await state.dismissTask("completed");
+  assert.equal(api.ackImport.mock.calls.length, 1);
+  wrapper.unmount();
+});
+
+test("turns a thrown local ingest error into a retryable failed task", async () => {
+  const completed = task({
+    id: "completed",
+    status: "COMPLETED",
+    completedAt: "2026-08-06T00:00:03.000Z",
+  });
+  const api = {
+    submitImport: vi.fn(),
+    listImports: vi.fn().mockResolvedValue([completed]),
+    retryImport: vi.fn(),
+    ackImport: vi.fn(),
+  };
+  const { state, wrapper } = mountImportTasks({
+    api,
+    importAnalyzedResult: vi.fn().mockRejectedValue(new Error("disk full")),
+  });
+
+  await state.refresh();
+
+  assert.equal(state.tasks.value[0].status, "FAILED");
+  assert.equal(state.tasks.value[0].error, "disk full");
   wrapper.unmount();
 });

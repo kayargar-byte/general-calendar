@@ -1,5 +1,5 @@
 /* 視覺語言：Apple 產品頁的排版原則——大字級跳躍、負字距、膠囊按鈕、以表面色階取代線條。
-   分類色（personal／documents／…）為產品語義色，不隨主題風格調整。 */
+   分類色（work／family／documents／…）為產品語義色，不隨主題風格調整。 */
 :root {
   color-scheme: light;
   --color-canvas: #ffffff;
@@ -12,7 +12,8 @@
   --color-accent: #0071e3;
   --color-accent-hover: #0077ed;
   --color-danger: #d70015;
-  --color-personal: #078da0;
+  --color-allowances: #d63384;
+  --color-leisure: #0b7285;
   --color-documents: #e97816;
   --color-medical: #7857b3;
   --color-family: #459b38;
@@ -58,7 +59,8 @@
   --color-accent: #0a84ff;
   --color-accent-hover: #3395ff;
   --color-danger: #ff453a;
-  --color-personal: #1aaebf;
+  --color-allowances: #e053a1;
+  --color-leisure: #26a7ba;
   --color-documents: #f08c2a;
   --color-medical: #9a78d4;
   --color-family: #5bbf4a;
@@ -193,6 +195,216 @@ textarea:focus-visible {
 #import-document:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Desktop import task rail occupies one fixed-height toolbar lane. */
+.import-task-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 504px;
+  min-width: 0;
+  height: 32px;
+}
+
+.import-task-list {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.import-task-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 7px;
+  border-radius: var(--radius-field);
+  background: var(--color-surface-muted);
+}
+
+.import-task-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: #ffffff;
+  background: var(--color-text-secondary);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.import-task-icon.is-pdf {
+  background: var(--color-error-text);
+}
+
+.import-task-icon.is-word {
+  background: var(--color-accent);
+}
+
+.import-task-icon.is-excel {
+  background: var(--color-family);
+}
+
+.import-task-icon.is-image {
+  background: var(--color-medical);
+}
+
+.import-task-details {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.import-task-name,
+.import-task-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-task-name {
+  font-size: 12px;
+}
+
+.import-task-meta,
+.import-task-queued {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.import-energy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.import-energy-ball {
+  position: fixed;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin: -7px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent) 20%, transparent),
+    0 0 18px var(--color-accent);
+  transform: translate(var(--from-x), var(--from-y));
+}
+
+.import-energy-ball.is-flying {
+  animation: import-energy-flight 650ms cubic-bezier(0.22, 0.8, 0.35, 1) forwards;
+}
+
+.import-energy-ball.is-landing {
+  animation: import-energy-land 250ms ease-out forwards;
+}
+
+.import-energy-ripple {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--color-accent);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.import-energy-ball.is-landing .import-energy-ripple {
+  animation: import-energy-ripple 250ms ease-out forwards;
+}
+
+.import-month-popup {
+  position: fixed;
+  z-index: 2;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 14%);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.35;
+  animation: import-month-popup-in 180ms ease-out both;
+}
+
+.calendar-day.is-import-revealed,
+#calendar-title.is-import-revealed {
+  animation: import-energy-reveal 500ms ease-out;
+}
+
+.calendar-day.is-import-revealed .calendar-date,
+.calendar-day.is-import-revealed .event-list {
+  animation: import-energy-content-reveal 500ms ease-out;
+}
+
+@keyframes import-energy-flight {
+  0% { transform: translate(var(--from-x), var(--from-y)) scale(0.75); opacity: 0; }
+  12% { opacity: 1; }
+  50% { transform: translate(var(--arc-x), var(--arc-y)) scale(1); }
+  100% { transform: translate(var(--to-x), var(--to-y)) scale(0.9); opacity: 1; }
+}
+
+@keyframes import-energy-land {
+  0% { transform: translate(var(--to-x), var(--to-y)) scale(1); }
+  45% { transform: translate(var(--to-x), var(--to-y)) scale(1.45, 0.6); }
+  100% { transform: translate(var(--to-x), var(--to-y)) scale(0); opacity: 0; }
+}
+
+@keyframes import-energy-ripple {
+  from { transform: scale(0.65); opacity: 0.9; }
+  to { transform: scale(3); opacity: 0; }
+}
+
+@keyframes import-energy-reveal {
+  0%, 100% { box-shadow: none; }
+  35% { box-shadow: inset 0 0 0 2px var(--color-accent), 0 0 16px color-mix(in srgb, var(--color-accent) 28%, transparent); }
+}
+
+@keyframes import-energy-content-reveal {
+  0% { opacity: 0.4; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes import-month-popup-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.import-task-actions {
+  display: inline-flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.import-task-action {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 11px;
+}
+
+.import-task-action:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.import-task-queued {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .month-controls {
@@ -526,8 +738,12 @@ textarea:focus-visible {
   opacity: 1;
 }
 
-#calendar-filters input[value="personal"]:checked {
-  background: var(--color-personal);
+#calendar-filters input[value="allowances"]:checked {
+  background: var(--color-allowances);
+}
+
+#calendar-filters input[value="leisure"]:checked {
+  background: var(--color-leisure);
 }
 
 #calendar-filters input[value="documents"]:checked {
@@ -982,7 +1198,7 @@ textarea:focus-visible {
      淺色分類（橙/綠/青）混 25% 黑加深，確保白字對比 ≥ 4.5:1。 */
 .calendar-bar,
 .event-summary {
-  --event-color: var(--color-personal);
+  --event-color: var(--color-other);
   display: block;
   width: 100%;
   min-height: 18px;
@@ -1034,8 +1250,12 @@ textarea:focus-visible {
   filter: brightness(1.12);
 }
 
-.event-summary[data-calendar-id="personal"] {
-  --event-color: var(--color-personal);
+.event-summary[data-calendar-id="allowances"] {
+  --event-color: var(--color-allowances);
+}
+
+.event-summary[data-calendar-id="leisure"] {
+  --event-color: var(--color-leisure);
 }
 
 .event-summary[data-calendar-id="documents"] {
@@ -1351,6 +1571,16 @@ dialog::backdrop {
   .month-slide-next-leave-active,
   .month-slide-prev-enter-active,
   .month-slide-prev-leave-active {
+    transition: none;
+  }
+
+  .import-energy-ball,
+  .import-month-popup,
+  .calendar-day.is-import-revealed,
+  #calendar-title.is-import-revealed,
+  .calendar-day.is-import-revealed .calendar-date,
+  .calendar-day.is-import-revealed .event-list {
+    animation: none;
     transition: none;
   }
 }
