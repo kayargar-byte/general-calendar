@@ -1,15 +1,17 @@
+/* 視覺語言：Apple 產品頁的排版原則——大字級跳躍、負字距、膠囊按鈕、以表面色階取代線條。
+   分類色（personal／documents／…）為產品語義色，不隨主題風格調整。 */
 :root {
   color-scheme: light;
   --color-canvas: #ffffff;
-  --color-sidebar: #f5f5f7;
-  --color-toolbar: #f7f7f8;
-  --color-border: #d9d9dd;
-  --color-border-strong: #c7c7cc;
+  --color-sidebar: #fbfbfd;
+  --color-toolbar: #ffffff;
+  --color-border: #e8e8ed;
+  --color-border-strong: #d2d2d7;
   --color-text: #1d1d1f;
   --color-text-secondary: #6e6e73;
-  --color-accent: #007b8e;
-  --color-accent-hover: #006b7b;
-  --color-danger: #c9342f;
+  --color-accent: #0071e3;
+  --color-accent-hover: #0077ed;
+  --color-danger: #d70015;
   --color-personal: #078da0;
   --color-documents: #e97816;
   --color-medical: #7857b3;
@@ -17,45 +19,60 @@
   --color-work: #3478c7;
   --color-other: #70757e;
   --color-surface: #ffffff;
-  --color-surface-hover: #eeeeef;
-  --color-surface-muted: #f8f9fa;
-  --color-error-bg: #fff1f0;
-  --color-error-text: #8e2420;
-  --color-danger-hover-bg: #fff0ef;
-  --color-outside-month: #f7f7f8;
+  --color-surface-hover: #f5f5f7;
+  --color-surface-muted: #f5f5f7;
+  --color-error-bg: #fff5f5;
+  --color-error-text: #b3000f;
+  --color-danger-hover-bg: #fff5f5;
+  --color-outside-month: #ffffff;
+
+  /* 圓角：按鈕全部膠囊化，容器用大圓角，資料列用小圓角。 */
+  --radius-pill: 980px;
+  --radius-card: 18px;
+  --radius-field: 10px;
+  --radius-sm: 6px;
+
+  /* 浮層陰影＝0.5px 描邊環＋一層投影。純投影不足以讓白色浮層從白色背景中分離
+     （搜尋下拉會變成看不見的白方塊），描邊環負責界線、投影負責層次。 */
+  --shadow-popover: 0 0 0 0.5px rgb(0 0 0 / 10%), 0 8px 28px rgb(0 0 0 / 14%);
+  --shadow-modal: 0 0 0 0.5px rgb(0 0 0 / 8%), 0 16px 56px rgb(0 0 0 / 22%);
+
   font-family:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC",
     "Microsoft JhengHei", sans-serif;
   color: var(--color-text);
   background: var(--color-canvas);
   font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-canvas: #1c1c1e;
-  --color-sidebar: #242426;
-  --color-toolbar: #1f1f21;
-  --color-border: #38383c;
-  --color-border-strong: #48484c;
-  --color-text: #f2f2f4;
-  --color-text-secondary: #a8a8ad;
-  --color-accent: #2bb3c4;
-  --color-accent-hover: #1fa3b4;
-  --color-danger: #e5484d;
+  --color-canvas: #000000;
+  --color-sidebar: #0a0a0a;
+  --color-toolbar: #161617;
+  --color-border: #1f1f1f;
+  --color-border-strong: #424245;
+  --color-text: #f5f5f7;
+  --color-text-secondary: #86868b;
+  --color-accent: #0a84ff;
+  --color-accent-hover: #3395ff;
+  --color-danger: #ff453a;
   --color-personal: #1aaebf;
   --color-documents: #f08c2a;
   --color-medical: #9a78d4;
   --color-family: #5bbf4a;
   --color-work: #4d8fda;
   --color-other: #8a8f97;
-  --color-surface: #2a2a2c;
-  --color-surface-hover: #3a3a3c;
-  --color-surface-muted: #2f2f31;
-  --color-error-bg: #3a1f1f;
-  --color-error-text: #f5b8b5;
-  --color-danger-hover-bg: #3a1f1f;
-  --color-outside-month: #232325;
+  --color-surface: #1d1d1f;
+  --color-surface-hover: #2c2c2e;
+  --color-surface-muted: #1a1a1c;
+  --color-error-bg: #2a1416;
+  --color-error-text: #ff9f9a;
+  --color-danger-hover-bg: #2a1416;
+  --color-outside-month: #1d1d1f;
+  --shadow-popover: 0 0 0 0.5px rgb(255 255 255 / 14%), 0 8px 28px rgb(0 0 0 / 60%);
+  --shadow-modal: 0 0 0 0.5px rgb(255 255 255 / 12%), 0 16px 56px rgb(0 0 0 / 70%);
 }
 
 * {
@@ -75,8 +92,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--color-canvas);
-  font-size: 14px;
-  letter-spacing: 0;
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
 button,
@@ -84,7 +101,7 @@ input,
 select,
 textarea {
   font: inherit;
-  letter-spacing: 0;
+  letter-spacing: inherit;
 }
 
 button {
@@ -92,96 +109,135 @@ button {
   cursor: pointer;
 }
 
+/* 焦點框用不透明 accent：半透明色在淺底上與相鄰色的對比不足 3:1，
+   達不到 WCAG 2.1 對焦點指示器的要求。 */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, white);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
+/* 工具列以 flex 排列：ImportDocumentButton 為 fragment（button＋隱藏 input），
+   固定欄數的 grid 會讓項目數與欄數對不上而換行，故不使用 grid。
+   注意：不要在此加 backdrop-filter——它會把溢出的子元素裁到工具列邊界，
+   搜尋下拉會整個消失；且工具列是 flex 項目、內容不從其下方捲過，模糊本來就無對象。 */
 .calendar-toolbar {
   z-index: 2;
-  display: grid;
-  grid-template-columns: 264px auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  flex: 0 0 60px;
-  min-height: 60px;
-  padding: 0 20px 0 24px;
-  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+  flex: 0 0 56px;
+  min-height: 56px;
+  padding: 0 22px;
   background: var(--color-toolbar);
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 .calendar-toolbar h1 {
-  margin: 0;
-  font-size: 21px;
-  font-weight: 650;
+  flex: 0 0 auto;
+  margin: 0 12px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 
+/* 次要動作一律膠囊、無框、灰底——邊框留給輸入類元件。 */
 #create-event,
+#import-document,
+#theme-toggle,
+#open-manage,
+#open-settings,
 .month-controls button {
-  min-height: 34px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 5%);
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 #create-event {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-width: 116px;
-  padding: 0 14px;
-  font-weight: 550;
+  gap: 5px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+#create-event:hover {
+  background: var(--color-accent-hover);
 }
 
 #create-event span {
-  color: var(--color-text-secondary);
-  font-size: 21px;
-  font-weight: 350;
+  color: inherit;
+  font-size: 15px;
+  font-weight: 400;
   line-height: 1;
 }
 
-.month-controls {
-  display: inline-grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  gap: 6px;
-  justify-self: end;
+#import-document {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
 }
 
+#import-document:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.month-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  margin-left: 4px;
+}
+
+/* 搜尋框推到右側動作群之前，中間留白讓左側動作成組。 */
 .event-search {
   position: relative;
-  justify-self: center;
-  width: min(320px, 100%);
+  flex: 0 1 260px;
+  margin-left: auto;
 }
 
 .event-search-input {
   width: 100%;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 5%);
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  font-size: 13px;
+}
+
+.event-search-input::placeholder {
+  color: var(--color-text-secondary);
 }
 
 .search-results {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   z-index: 10;
   display: grid;
   gap: 2px;
   padding: 6px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 14px;
   background: var(--color-surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+  box-shadow: var(--shadow-popover);
 }
 
 .search-result-empty {
@@ -197,10 +253,11 @@ textarea:focus-visible {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 7px 9px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
+  font-size: 13px;
   text-align: left;
 }
 
@@ -229,25 +286,82 @@ textarea:focus-visible {
 }
 
 .month-controls button {
-  min-width: 38px;
-  padding: 0 11px;
+  min-width: 32px;
+  padding: 0 10px;
 }
 
 .month-controls button[aria-label] {
+  display: grid;
+  place-items: center;
+  width: 32px;
   padding: 0;
+  border-radius: 50%;
   color: var(--color-text-secondary);
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
 }
 
 #today {
-  min-width: 64px;
-  font-weight: 550;
+  min-width: 56px;
+  padding: 0 14px;
 }
 
-#create-event:hover,
+#theme-toggle:hover,
+#open-manage:hover,
+#open-settings:hover,
+#import-document:hover:not(:disabled),
 .month-controls button:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-text) 8%);
+}
+
+/* 匯入結果橫幅：夾在工具列與版面之間的一列狀態帶，成功為中性底、失敗為錯誤底。 */
+.import-banner {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 10px 22px;
+  background: var(--color-surface-muted);
+  font-size: 13px;
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
+
+.import-banner:has(.import-banner-error) {
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+}
+
+.import-banner-message,
+.import-banner-error {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-banner-actions {
+  margin-left: auto;
+}
+
+#close-import-banner {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 150ms ease;
+}
+
+#close-import-banner:hover {
+  opacity: 1;
 }
 
 .calendar-layout {
@@ -261,7 +375,7 @@ textarea:focus-visible {
 .calendar-sidebar {
   position: relative;
   min-height: 0;
-  padding: 24px;
+  padding: 24px 20px;
   overflow-y: auto;
   border-right: 1px solid var(--color-border);
   background: var(--color-sidebar);
@@ -300,14 +414,19 @@ textarea:focus-visible {
 }
 
 .mini-calendar-panel {
-  padding-bottom: 28px;
+  padding-bottom: 24px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.mini-calendar-panel h3 {
-  margin: 0 0 14px;
-  font-size: 15px;
-  font-weight: 650;
+/* 側欄小標題：全大寫字距展開，與內容形成層級但不搶主體字級。 */
+.mini-calendar-panel h3,
+#calendar-filters legend {
+  margin: 0 0 12px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 #mini-calendar {
@@ -326,7 +445,9 @@ textarea:focus-visible {
   border-radius: 50%;
   background: transparent;
   font-size: 12px;
+  font-weight: 400;
   line-height: 28px;
+  transition: background-color 120ms ease;
 }
 
 .mini-calendar-date:hover {
@@ -334,18 +455,18 @@ textarea:focus-visible {
 }
 
 .mini-calendar-date.is-outside-month {
-  color: #a0a0a5;
+  color: color-mix(in srgb, var(--color-text-secondary) 78%, transparent);
 }
 
 .mini-calendar-date.is-today {
   color: #ffffff;
   background: var(--color-accent);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 #calendar-filters {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   padding: 24px 0 0;
   margin: 0;
   border: 0;
@@ -353,18 +474,18 @@ textarea:focus-visible {
 
 #calendar-filters legend {
   width: 100%;
-  padding: 0 0 10px;
-  font-size: 15px;
-  font-weight: 650;
 }
 
 #calendar-filters label {
   display: grid;
-  grid-template-columns: 19px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  min-height: 34px;
-  border-radius: 5px;
+  min-height: 32px;
+  padding: 0 8px;
+  margin: 0 -8px;
+  border-radius: 8px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -376,12 +497,15 @@ textarea:focus-visible {
   appearance: none;
   display: grid;
   place-content: center;
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   margin: 0;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 4px;
-  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 5px;
+  background: transparent;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
 #calendar-filters input::after {
@@ -438,12 +562,16 @@ textarea:focus-visible {
   background: var(--color-canvas);
 }
 
+/* 面板內容自然高度並靠上對齊：原本輸入框佔滿 1fr，在高螢幕上會撐成一片空白區塊，
+   把送出鈕推到視窗底部而與輸入內容脫節。 */
 .ai-schedule-panel {
   position: absolute;
-  inset: 24px;
+  inset: 28px 24px;
   display: grid;
-  grid-template-rows: auto auto minmax(132px, 1fr) auto;
-  gap: 12px;
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
   opacity: 0;
   pointer-events: none;
   transform: translateX(-16px);
@@ -473,54 +601,65 @@ textarea:focus-visible {
 
 .ai-schedule-header h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 650;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 #close-ai-schedule {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   color: var(--color-text-secondary);
   background: var(--color-surface-hover);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
+  transition: background-color 150ms ease;
 }
 
 #close-ai-schedule:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-text) 10%);
 }
 
 .ai-schedule-panel > label {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 #ai-schedule-input {
   width: 100%;
-  min-height: 132px;
-  padding: 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  min-height: 128px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--radius-card);
   color: var(--color-text);
-  background: var(--color-surface);
+  background: var(--color-surface-muted);
+  font-size: 15px;
+  line-height: 1.6;
   resize: vertical;
+}
+
+#ai-schedule-input::placeholder {
+  color: var(--color-text-secondary);
 }
 
 #analyze-ai-schedule {
   justify-self: end;
   min-height: 36px;
-  padding: 0 16px;
-  border: 1px solid var(--color-accent);
-  border-radius: 5px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--radius-pill);
   color: #ffffff;
   background: var(--color-accent);
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 #analyze-ai-schedule:hover {
@@ -528,14 +667,15 @@ textarea:focus-visible {
 }
 
 #analyze-ai-schedule:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: default;
 }
 
 .ai-schedule-error {
-  padding: 8px 10px;
+  padding: 10px 14px;
   margin: 0;
-  border-left: 3px solid var(--color-danger);
+  border: 0;
+  border-radius: var(--radius-field);
   color: var(--color-error-text);
   background: var(--color-error-bg);
   font-size: 13px;
@@ -559,9 +699,9 @@ textarea:focus-visible {
 .ai-candidate-item {
   display: grid;
   gap: 4px;
-  padding: 9px 10px;
+  padding: 12px 14px;
   border-left: 3px solid var(--candidate-color, var(--color-other));
-  border-radius: 4px;
+  border-radius: var(--radius-field);
   background: var(--color-surface-muted);
   font-size: 13px;
 }
@@ -615,16 +755,18 @@ textarea:focus-visible {
 
 .ai-candidate-confirm {
   justify-self: start;
-  padding: 4px 12px;
-  border: 1px solid var(--color-accent);
-  border-radius: 5px;
-  color: var(--color-accent);
-  background: transparent;
-  font-weight: 600;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  background: var(--color-accent);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 .ai-candidate-confirm:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-accent-hover);
 }
 
 /* 推薦主題 chips：搜索後附「你可能也想查」建議，點擊即追問（見 docs/adr/0007）。 */
@@ -646,96 +788,111 @@ textarea:focus-visible {
 }
 
 .ai-recommendation-chip {
-  padding: 4px 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 999px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
   color: var(--color-text);
-  background: var(--color-surface);
+  background: var(--color-surface-muted);
   font-size: 12px;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .ai-recommendation-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
 }
 
 #ai-schedule-launcher {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: 24px;
+  bottom: 24px;
   z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-height: 44px;
-  padding: 0 15px 0 10px;
-  border: 1px solid var(--color-accent);
-  border-radius: 7px;
+  padding: 0 20px 0 8px;
+  border: 0;
+  border-radius: var(--radius-pill);
   color: #ffffff;
   background: var(--color-accent);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
-  font-weight: 600;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-accent) 32%, transparent);
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    transform 150ms ease;
 }
 
 #ai-schedule-launcher:hover {
   background: var(--color-accent-hover);
+  transform: translateY(-1px);
 }
 
 .ai-launcher-mark {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   color: var(--color-accent);
-  background: var(--color-surface);
+  background: #ffffff;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .calendar {
   display: grid;
-  grid-template-rows: 72px 34px minmax(0, 1fr);
+  grid-template-rows: 108px 32px minmax(0, 1fr);
   min-width: 760px;
   min-height: 100%;
 }
 
 .calendar-title-wrap {
   position: relative;
-  align-self: center;
-  padding: 0 20px;
+  align-self: end;
+  padding: 0 24px 18px;
 }
 
+/* 頁面唯一的大字：月份標題以顯示級字級與負字距承擔標題角色，
+   其餘元件一律收斂在 11–15px，讓層級由此一處建立。 */
 #calendar-title {
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: 30px;
-  font-weight: 680;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   line-height: 1;
+  transition: opacity 150ms ease;
 }
 
 #calendar-title:hover {
-  color: var(--color-accent);
+  opacity: 0.55;
 }
 
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: center;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .weekdays span {
-  padding: 0 10px;
+  padding: 0 12px;
   text-align: right;
 }
 
+/* 1px gap 保留（.calendar-bar 的 --col-w／--row-h calc 依賴它），但底色改為透明：
+   直向縫隙透出畫布色而不成線，週與週之間的橫線改由日格的 inset 陰影繪製。
+   結果是只有橫向分隔、無直向表格線——日期靠留白對齊。 */
 .calendar-grid {
   position: relative;
   display: grid;
@@ -743,7 +900,7 @@ textarea:focus-visible {
   /* 最小高度 116px：3 條跨日長條（各 20px 車道）加單日事件仍留白；工作區放不下時日曆滾動。 */
   grid-auto-rows: minmax(116px, 1fr);
   min-height: 0;
-  background: var(--color-border);
+  background: transparent;
   gap: 1px;
 }
 
@@ -753,8 +910,16 @@ textarea:focus-visible {
   padding: 7px;
   overflow: hidden;
   background: var(--color-surface);
+  box-shadow: inset 0 1px 0 var(--color-border);
+  transition: background-color 150ms ease;
 }
 
+.calendar-day:hover {
+  background: var(--color-surface-muted);
+}
+
+/* 非當月日格不做底色區分：相鄰兩格之間的 1px 透明縫會讓底色差變成直向線條，
+   與「只有橫線」的網格衝突。改為只淡化日期數字（見 .is-outside-month .calendar-date）。 */
 .calendar-day.is-outside-month {
   background: var(--color-outside-month);
 }
@@ -772,16 +937,18 @@ textarea:focus-visible {
   border-radius: 50%;
   background: transparent;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  transition: background-color 120ms ease;
 }
 
 .calendar-date:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .calendar-day.is-outside-month .calendar-date {
-  color: #9b9ba0;
+  color: color-mix(in srgb, var(--color-text-secondary) 78%, transparent);
 }
 
 /* 被跨日長條覆蓋的格子：長條排在日期下方（--bar-top），單日事件列表往下推以免與長條重疊；
@@ -793,7 +960,7 @@ textarea:focus-visible {
 .calendar-day.is-today .calendar-date {
   color: #ffffff;
   background: var(--color-accent);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .event-list {
@@ -808,20 +975,19 @@ textarea:focus-visible {
   min-width: 0;
 }
 
-/* 事件以顏色長條呈現：單日（event-summary）與跨日（calendar-bar）共用視覺，僅定位不同。
-   淺色分類（橙/綠/青）混 25% 黑加深，確保白字對比 ≥ 4.5:1。 */
+/* 單日與跨日事件視覺分工：
+   - 單日（event-summary）為彩色圓點＋深色文字，密集排列時仍輕；分類色只出現在圓點，
+     文字沿用正文色，故無需為對比度把分類色加深。
+   - 跨日（calendar-bar）維持實心色塊，因為色塊長度本身就是「期間」的資訊。
+     淺色分類（橙/綠/青）混 25% 黑加深，確保白字對比 ≥ 4.5:1。 */
 .calendar-bar,
 .event-summary {
   --event-color: var(--color-personal);
   display: block;
   width: 100%;
   min-height: 18px;
-  padding: 1px 6px;
   overflow: hidden;
   border: 0;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--event-color) 75%, #000);
-  color: #ffffff;
   font-size: 12px;
   line-height: 18px;
   text-align: left;
@@ -829,9 +995,43 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-.calendar-bar:hover,
+.event-summary {
+  position: relative;
+  padding: 1px 6px 1px 18px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-weight: 400;
+  transition: background-color 120ms ease;
+}
+
+.event-summary::before {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--event-color);
+  content: "";
+}
+
 .event-summary:hover {
-  filter: brightness(1.08);
+  background: var(--color-surface-hover);
+}
+
+.calendar-bar {
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--event-color) 75%, #000);
+  color: #ffffff;
+  font-weight: 500;
+  transition: filter 120ms ease;
+}
+
+.calendar-bar:hover {
+  filter: brightness(1.12);
 }
 
 .event-summary[data-calendar-id="personal"] {
@@ -881,42 +1081,46 @@ dialog {
   max-height: calc(100vh - 48px);
   padding: 0;
   overflow: auto;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
+  border: 0;
+  border-radius: var(--radius-card);
   color: var(--color-text);
   background: var(--color-surface);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-modal);
 }
 
 dialog::backdrop {
-  background: rgb(0 0 0 / 22%);
+  background: rgb(0 0 0 / 32%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 #event-form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
-  padding: 20px;
+  gap: 6px;
+  padding: 26px 28px 22px;
 }
 
 .dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .dialog-header h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 650;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 #close-event-dialog,
 #close-ai-batch,
 #close-tag-edit,
 #close-manage,
-#close-settings {
+#close-settings,
+#close-document-view {
   display: grid;
   place-items: center;
   width: 30px;
@@ -927,6 +1131,7 @@ dialog::backdrop {
   color: var(--color-text-secondary);
   background: var(--color-surface-hover);
   font-size: 0;
+  transition: background-color 150ms ease;
 }
 
 #close-event-dialog::before,
@@ -935,37 +1140,52 @@ dialog::backdrop {
 #close-manage::before,
 #close-settings::before {
   content: "×";
-  font-size: 20px;
-  font-weight: 350;
+  font-size: 18px;
+  font-weight: 400;
   line-height: 1;
+}
+
+#close-document-view {
+  font-size: 18px;
 }
 
 #close-event-dialog:hover,
 #close-ai-batch:hover,
 #close-tag-edit:hover,
 #close-manage:hover,
-#close-settings:hover {
-  background: var(--color-surface-hover);
+#close-settings:hover,
+#close-document-view:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-text) 10%);
 }
 
 #event-form > label,
 .time-fields label {
-  margin-top: 4px;
+  margin-top: 10px;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
+/* 輸入類元件是唯一保留描邊的地方——邊框在此承擔「可編輯」的語義，而非裝飾。 */
 #event-form input,
 #event-form select,
 #event-form textarea {
   width: 100%;
-  min-height: 36px;
-  padding: 7px 9px;
+  min-height: 38px;
+  padding: 9px 12px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-field);
   color: var(--color-text);
   background: var(--color-surface);
+  font-size: 15px;
+  transition: border-color 150ms ease;
+}
+
+#event-form input:hover,
+#event-form select:hover,
+#event-form textarea:hover {
+  border-color: var(--color-text-secondary);
 }
 
 #event-form textarea {
@@ -985,9 +1205,10 @@ dialog::backdrop {
 }
 
 .form-error {
-  padding: 9px 10px;
+  padding: 10px 14px;
   margin: 0;
-  border-left: 3px solid var(--color-danger);
+  border: 0;
+  border-radius: var(--radius-field);
   color: var(--color-error-text);
   background: var(--color-error-bg);
   font-size: 13px;
@@ -998,7 +1219,7 @@ dialog::backdrop {
   align-items: center;
   justify-content: space-between;
   min-height: 36px;
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .dialog-actions > div {
@@ -1008,21 +1229,23 @@ dialog::backdrop {
 }
 
 .dialog-actions button {
-  min-width: 72px;
+  min-width: 76px;
   min-height: 34px;
-  padding: 0 14px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
-  background: var(--color-surface);
-  font-weight: 550;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 .dialog-actions button:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-text) 10%);
 }
 
 .dialog-actions button[type="submit"] {
-  border-color: var(--color-accent);
   color: #ffffff;
   background: var(--color-accent);
 }
@@ -1032,7 +1255,6 @@ dialog::backdrop {
 }
 
 .dialog-actions .danger-button {
-  border-color: transparent;
   color: var(--color-danger);
   background: transparent;
 }
@@ -1042,7 +1264,7 @@ dialog::backdrop {
 }
 
 #ai-batch-dialog {
-  padding: 20px;
+  padding: 26px 28px 22px;
 }
 
 .ai-batch-list {
@@ -1058,9 +1280,9 @@ dialog::backdrop {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 11px 14px;
   border-left: 3px solid var(--batch-color, var(--color-other));
-  border-radius: 4px;
+  border-radius: var(--radius-field);
   background: var(--color-surface-muted);
   font-size: 13px;
 }
@@ -1078,7 +1300,6 @@ dialog::backdrop {
 }
 
 #confirm-ai-batch {
-  border-color: var(--color-accent);
   color: #ffffff;
   background: var(--color-accent);
 }
@@ -1141,18 +1362,21 @@ dialog::backdrop {
 
 .add-calendar-tag {
   width: 100%;
-  padding: 6px 10px;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: 5px;
-  background: transparent;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
   color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .add-calendar-tag:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
 }
 
 .tag-add-form {
@@ -1171,11 +1395,27 @@ dialog::backdrop {
   display: block;
   appearance: auto;
   margin: 0;
-  padding: 5px 8px;
+  padding: 6px 12px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
+  color: var(--color-text);
   background: var(--color-surface);
+}
+
+.tag-add-confirm {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  background: var(--color-accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-add-confirm:hover {
+  background: var(--color-accent-hover);
 }
 
 #calendar-filters input[type="text"]::after {
@@ -1244,23 +1484,25 @@ dialog::backdrop {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  padding: 20px;
+  padding: 26px 28px 22px;
 }
 
 #tag-edit-form > label {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 #tag-edit-form input[type="text"] {
   width: 100%;
-  min-height: 36px;
-  padding: 7px 9px;
+  min-height: 38px;
+  padding: 9px 12px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-field);
   color: var(--color-text);
   background: var(--color-surface);
+  font-size: 15px;
 }
 
 .tag-color-palette {
@@ -1275,8 +1517,9 @@ dialog::backdrop {
 .tag-color-palette legend {
   padding: 0;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .tag-color-swatch {
@@ -1306,47 +1549,38 @@ dialog::backdrop {
 .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-#theme-toggle,
-#open-manage,
-#open-settings {
-  min-height: 34px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 5%);
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 #theme-toggle {
-  width: 34px;
+  display: grid;
+  place-items: center;
+  width: 32px;
   padding: 0;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 #open-manage,
 #open-settings {
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 550;
+  padding: 0 14px;
 }
 
 /* 日期跳轉 popover */
 .date-picker-popover {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 20px;
+  top: calc(100% + 4px);
+  left: 24px;
   z-index: 10;
   display: grid;
   grid-template-columns: auto auto auto;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  padding: 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
   background: var(--color-surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+  box-shadow: var(--shadow-popover);
 }
 
 .date-picker-popover label {
@@ -1355,12 +1589,13 @@ dialog::backdrop {
 }
 
 .date-picker-popover select {
-  min-height: 30px;
-  padding: 0 6px;
+  min-height: 32px;
+  padding: 0 8px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-field);
   color: var(--color-text);
   background: var(--color-surface);
+  font-size: 13px;
 }
 
 .date-picker-actions {
@@ -1373,50 +1608,66 @@ dialog::backdrop {
 
 .date-picker-actions button {
   min-height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
-  background: var(--color-surface);
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 #date-picker-confirm {
-  border-color: var(--color-accent);
   color: #ffffff;
   background: var(--color-accent);
+}
+
+#date-picker-confirm:hover {
+  background: var(--color-accent-hover);
 }
 
 /* 管理中心 */
 #manage-dialog {
   width: min(560px, calc(100vw - 48px));
-  padding: 20px;
+  padding: 26px 28px 22px;
 }
 
+/* 分頁改為分段控制器（segmented control）：以填色滑塊表示選取，取代底線。 */
 .manage-tabs {
   display: flex;
-  gap: 4px;
-  margin: 8px 0 12px;
-  border-bottom: 1px solid var(--color-border);
+  gap: 2px;
+  padding: 2px;
+  margin: 10px 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
 }
 
 .manage-tab {
+  flex: 1 1 0;
   padding: 6px 12px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .manage-tab.is-active {
-  border-bottom-color: var(--color-accent);
   color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 .manage-empty {
   margin: 0;
-  padding: 16px 0;
+  padding: 28px 0;
   color: var(--color-text-secondary);
+  font-size: 14px;
   text-align: center;
 }
 
@@ -1425,9 +1676,9 @@ dialog::backdrop {
   grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-left: 3px solid var(--row-color, var(--color-other));
-  border-radius: 4px;
+  border-radius: var(--radius-field);
   background: var(--color-surface-muted);
   font-size: 13px;
 }
@@ -1467,19 +1718,21 @@ dialog::backdrop {
 
 .manage-action-button {
   height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
   background: var(--color-surface);
   font-size: 12px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 .manage-action-button:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-surface-hover) 60%, var(--color-text) 12%);
 }
 
 .manage-action-button.is-danger {
-  border-color: transparent;
   color: var(--color-danger);
   background: transparent;
 }
@@ -1490,23 +1743,29 @@ dialog::backdrop {
 
 /* 設定 */
 #settings-dialog {
-  width: min(360px, calc(100vw - 48px));
-  padding: 20px;
+  width: min(400px, calc(100vw - 48px));
+  padding: 26px 28px 22px;
 }
 
+/* 兩段設定之間的分隔線畫在上一段的底部：<legend> 會在所屬 fieldset 的 border-box
+   頂端開一個缺口（border 與 box-shadow 同樣被排除），線從標題右側才出現而看似斷裂。 */
 #settings-theme {
   display: grid;
   gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 0 0 20px;
   border: 0;
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
-#settings-theme legend {
+#settings-theme legend,
+#settings-profile legend,
+.profile-field-label {
   padding: 0;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 #settings-theme label {
@@ -1519,35 +1778,22 @@ dialog::backdrop {
 /* 用戶畫像設定（資料層見 src/lib/user-profile.js） */
 #settings-profile {
   display: grid;
-  gap: 10px;
-  margin: 14px 0 0;
-  padding: 14px 0 0;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-}
-
-#settings-profile legend {
+  gap: 14px;
+  margin: 20px 0 0;
   padding: 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  border: 0;
 }
 
 .settings-profile-note {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .profile-field {
   display: grid;
-  gap: 4px;
-}
-
-.profile-field-label {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  gap: 6px;
 }
 
 .profile-priority-option {
@@ -1562,11 +1808,12 @@ dialog::backdrop {
 #profile-age-group,
 #profile-region {
   width: 100%;
-  padding: 8px;
+  padding: 9px 12px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-field);
   color: var(--color-text);
   background: var(--color-surface);
+  font-size: 14px;
 }
 
 #profile-interests {
@@ -1580,8 +1827,8 @@ dialog::backdrop {
 }
 
 .interest-category {
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border: 0;
+  border-radius: var(--radius-field);
   background: var(--color-surface-muted);
 }
 
@@ -1590,12 +1837,13 @@ dialog::backdrop {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 7px 10px;
+  padding: 9px 12px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-field);
   color: var(--color-text);
   background: transparent;
   font-size: 13px;
+  font-weight: 500;
   text-align: left;
 }
 
@@ -1622,27 +1870,29 @@ dialog::backdrop {
 
 .interest-category-all {
   justify-self: start;
-  padding: 2px 8px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 4px;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
-  background: transparent;
+  background: var(--color-surface);
   font-size: 12px;
 }
 
 .interest-category-all:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
 }
 
 #save-profile {
   justify-self: start;
-  padding: 6px 14px;
-  border: 1px solid var(--color-accent);
-  border-radius: 5px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: var(--radius-pill);
   color: #ffffff;
   background: var(--color-accent);
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 150ms ease;
 }
 
 #save-profile:hover {
@@ -1654,15 +1904,17 @@ dialog::backdrop {
   position: fixed;
   z-index: 100;
   max-width: 280px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #2a2a2c;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgb(28 28 30 / 92%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #ffffff;
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  box-shadow: var(--shadow-popover);
   pointer-events: none;
 }
 
@@ -1670,7 +1922,7 @@ dialog::backdrop {
 .document-view-dialog {
   width: min(720px, calc(100vw - 48px));
   max-height: 82vh;
-  padding: 20px;
+  padding: 26px 28px 22px;
   overflow-y: auto;
 }
 
@@ -1697,8 +1949,8 @@ dialog::backdrop {
 
 .doc-section {
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-field);
   background: var(--color-surface-muted);
   white-space: pre-wrap;
   word-break: break-word;
@@ -1713,8 +1965,8 @@ dialog::backdrop {
   display: block;
   max-width: 100%;
   margin: 8px auto;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  border-radius: var(--radius-field);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
 }
 
 .doc-quotes,
@@ -1727,13 +1979,15 @@ dialog::backdrop {
 .doc-quotes h3,
 .doc-events h3 {
   margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 650;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .doc-quote {
   margin: 0 0 6px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-left: 3px solid var(--color-accent);
   color: var(--color-text-secondary);
   background: var(--color-surface-muted);
@@ -1743,15 +1997,17 @@ dialog::backdrop {
 .doc-event-button {
   display: block;
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 14px;
   margin: 4px 0;
   text-align: left;
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  background: var(--color-surface);
+  border: 0;
+  border-radius: var(--radius-field);
+  color: var(--color-text);
+  background: var(--color-surface-muted);
   font-size: 13px;
+  transition: background-color 150ms ease;
 }
 
 .doc-event-button:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--color-surface-muted) 60%, var(--color-text) 10%);
 }

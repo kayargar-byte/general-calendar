@@ -13,8 +13,8 @@ export const AI_CONFIG = {
   visionEndpoint: "https://www.micuapi.ai/v1/chat/completions",
   // 視覺模型金鑰（中轉站 key，與文本 key 分開）
   visionApiKey: "sk-你的-micuapi-key",
-  // 視覺模型名稱（luna 支援視覺理解）
-  visionModel: "gpt-5.6-luna",
+  // 視覺模型名稱（terra 支援視覺理解；luna 在中轉站 vip_2 分組無渠道，勿用）
+  visionModel: "gpt-5.6-terra",
   // Serper 搜尋 API 金鑰（deepseek 原生 web_search 後暫未使用，保留作回退；免卡註冊）
   serperKey: "sk-你的-serper-key",
   // 搜尋地域與語言（澳門無專用 Google 網域，用香港地域與繁體中文）
