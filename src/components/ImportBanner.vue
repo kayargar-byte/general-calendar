@@ -5,7 +5,7 @@ defineProps({
   docName: { type: String, default: "" },
   error: { type: String, default: "" },
 });
-const emit = defineEmits(["undo", "close"]);
+const emit = defineEmits(["close"]);
 </script>
 
 <template>
@@ -28,14 +28,6 @@ const emit = defineEmits(["undo", "close"]);
       已匯入 {{ count }} 筆{{ docName ? `（來源：${docName}）` : "" }}
     </span>
     <div class="import-banner-actions">
-      <button
-        v-if="!error"
-        type="button"
-        id="undo-import"
-        @click="emit('undo')"
-      >
-        撤銷
-      </button>
       <button
         type="button"
         id="close-import-banner"

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { mount } from "@vue/test-utils";
 import { test } from "vitest";
 import App from "../src/App.vue";
+import { toDateKey } from "../src/lib/date-utils.js";
+import { createEvent } from "../src/lib/storage.js";
 
 const calendarPagePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -164,6 +166,28 @@ test("calendar page styles the AI schedule panel states", () => {
   assert.match(css, /\.calendar-layout\.is-ai-schedule-open/);
   assert.match(css, /220ms/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+});
+
+test("calendar page renders a multi-day event as a bar, not in day lists", () => {
+  localStorage.clear();
+  // 以當月第 3–5 日為多日事件，確保落於當前可見月內。
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 3);
+  const end = new Date(today.getFullYear(), today.getMonth(), 5);
+  createEvent({
+    title: "展覽",
+    date: toDateKey(start),
+    endDate: toDateKey(end),
+    calendarId: "personal",
+    startTime: "09:00",
+    endTime: "18:00",
+    notes: "",
+  });
+
+  const wrapper = mount(App);
+
+  assert.equal(wrapper.findAll(".calendar-bar").length > 0, true);
+  assert.equal(wrapper.findAll(".event-summary").length, 0);
 });
 
 test("calendar text colors meet WCAG AA contrast", () => {

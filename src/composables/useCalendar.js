@@ -14,18 +14,15 @@ import {
   getEvents,
   reassignEventsCalendar,
 } from "../lib/storage.js";
-import { analyzeDocument } from "../lib/ai.js";
+import { analyzeDocument, normalizeParsedEvents } from "../lib/ai.js";
 import {
-  clearLastImport,
   createDocument,
   deleteDocument,
   deleteDocumentBlob,
   deleteDocumentText,
   getDocument,
-  getLastImport,
   saveDocumentBlob,
   saveDocumentText,
-  setLastImport,
 } from "../lib/document-store.js";
 
 export function useCalendar() {
@@ -137,7 +134,7 @@ export function useCalendar() {
     ),
   );
 
-  const days = computed(() => {
+  const view = computed(() => {
     eventsVersion.value;
     return buildCalendarView(
       visibleMonth.value.getFullYear(),
@@ -147,6 +144,9 @@ export function useCalendar() {
       visibleCalendarIds.value,
     );
   });
+
+  const days = computed(() => view.value.days);
+  const bars = computed(() => view.value.bars);
 
   function changeMonth(offset) {
     slideDirection.value = offset > 0 ? "next" : "prev";
@@ -246,14 +246,14 @@ export function useCalendar() {
     isEventDialogOpen.value = true;
   }
 
-  function handleAiParsed(events) {
+  // 面板確認入曆後遞交：單一事件開編輯框預填，多事件進批量確認（見 docs/adr/0007）。
+  function handleAiConfirmEvent(event) {
     isAiScheduleOpen.value = false;
+    openCreateEventFromAi(event);
+  }
 
-    if (events.length === 1) {
-      openCreateEventFromAi(events[0]);
-      return;
-    }
-
+  function handleAiConfirmBatch(events) {
+    isAiScheduleOpen.value = false;
     pendingBatchEvents.value = events;
     isBatchDialogOpen.value = true;
   }
@@ -280,17 +280,52 @@ export function useCalendar() {
     isEventDialogOpen.value = false;
   }
 
-  function handleEventDeleted(date) {
+  async function handleEventDeleted(event) {
     if (returnFocus.value) {
       returnFocus.value = {
         ...returnFocus.value,
         type: "date",
-        value: date,
+        value: event?.date ?? "",
       };
+    }
+
+    // 刪除文檔的最後一個事件時，連同文檔紀錄一併移除（避免管理中心出現「0 筆」孤兒）。
+    if (typeof event?.sourceDocId === "string" && event.sourceDocId) {
+      const hasMore = getEvents().some(
+        (item) => item.sourceDocId === event.sourceDocId,
+      );
+
+      if (!hasMore) {
+        await removeDocument(event.sourceDocId);
+      }
     }
 
     eventsVersion.value++;
     isEventDialogOpen.value = false;
+  }
+
+  // 刪除事件；若它是所屬文檔的最後一個事件，連同文檔紀錄一併移除。
+  async function deleteEventWithCleanup(eventId) {
+    const event = getEvents().find((item) => item.id === eventId);
+
+    if (!event) {
+      return false;
+    }
+
+    deleteEvent(eventId);
+
+    if (typeof event.sourceDocId === "string" && event.sourceDocId) {
+      const hasMore = getEvents().some(
+        (item) => item.sourceDocId === event.sourceDocId,
+      );
+
+      if (!hasMore) {
+        await removeDocument(event.sourceDocId);
+      }
+    }
+
+    eventsVersion.value++;
+    return true;
   }
 
   function handleDialogClosed() {
@@ -309,54 +344,14 @@ export function useCalendar() {
         file,
         calendars.value,
       );
-      const docId = crypto.randomUUID();
-      const importedEvents = [];
 
-      for (const event of events) {
-        try {
-          importedEvents.push(
-            createEvent({
-              ...event,
-              sourceDocId: docId,
-              sourceQuote: event.quote,
-            }),
-          );
-        } catch {
-          // 單筆無效事件不阻斷整批匯入
-        }
-      }
-
-      if (importedEvents.length === 0) {
-        throw new Error("未能從文檔中解析出任何事件，請檢查文檔內容。");
-      }
-
-      createDocument({
-        id: docId,
-        name: typeof file.name === "string" ? file.name : "",
-        mimeType: typeof file.type === "string" ? file.type : "",
-        size: file.size ?? 0,
-        hasText: typeof extractedText === "string" && extractedText !== "",
+      await importAnalyzedResult({
+        events,
+        extractedText,
+        name: file.name,
+        mimeType: file.type,
+        blob: file,
       });
-
-      try {
-        await saveDocumentBlob(docId, file);
-      } catch {
-        // 原檔存儲失敗不阻斷事件匯入（檢視原檔為後續功能）
-      }
-
-      if (extractedText) {
-        try {
-          await saveDocumentText(docId, extractedText);
-        } catch {
-          // 統一文本存儲失敗不阻斷事件匯入（檢視原文為後續功能）
-        }
-      }
-
-      setLastImport(docId);
-      importCount.value = importedEvents.length;
-      importDocName.value = typeof file.name === "string" ? file.name : "";
-      importBannerOpen.value = true;
-      eventsVersion.value++;
     } catch (error) {
       importError.value =
         error instanceof Error ? error.message : "文檔匯入失敗。";
@@ -366,8 +361,97 @@ export function useCalendar() {
     }
   }
 
-  // 刪除單一文檔及其全部關聯事件、原檔 blob 與統一文本；供「撤銷上次匯入」
-  // 與管理中心「刪除文件」共用（見計劃步驟 3）。
+  // 匯入已抽取的事件結果：先以用戶分類歸一（未知分類回落 personal），再逐筆入曆，
+  // 建立文檔紀錄並存原檔／統一文本。拖曳上傳（blob=原檔）與右鍵收件箱（無 blob）
+  // 共用此路徑（見 docs/adr/0008）。
+  async function importAnalyzedResult({
+    events,
+    extractedText,
+    name,
+    mimeType,
+    blob,
+  }) {
+    const calendarIds = new Set(calendars.value.map((calendar) => calendar.id));
+    const fallbackCalendarId = calendars.value[0]?.id ?? "personal";
+    // 抽取結果的 calendarId 可能不在用戶分類清單（右鍵匯入不帶分類，模型常回傳 personal），
+    // 入庫前對映到用戶第一個分類，避免 createEvent 因無效分類把整批事件丟棄（見 docs/adr/0008）。
+    const normalized = normalizeParsedEvents(events, calendarIds).map((event) =>
+      calendarIds.has(event.calendarId)
+        ? event
+        : { ...event, calendarId: fallbackCalendarId },
+    );
+
+    if (normalized.length === 0) {
+      importError.value = "未能從文檔中解析出任何事件，請檢查文檔內容。";
+      importBannerOpen.value = true;
+      return false;
+    }
+
+    const docId = crypto.randomUUID();
+    let importedCount = 0;
+    const seenKeys = new Set();
+
+    for (const event of normalized) {
+      // 同一匯入批次內 title＋日期＋結束日完全相同的重複事件只保留一條
+      //（視覺／文本模型偶爾對同一事件回傳多筆，見 docs/adr/0008）。
+      const key = `${event.title}|${event.date}|${event.endDate}`;
+
+      if (seenKeys.has(key)) {
+        continue;
+      }
+
+      seenKeys.add(key);
+
+      try {
+        createEvent({
+          ...event,
+          sourceDocId: docId,
+          sourceQuote: event.quote,
+        });
+        importedCount += 1;
+      } catch {
+        // 單筆無效事件不阻斷整批匯入
+      }
+    }
+
+    if (importedCount === 0) {
+      importError.value = "未能從文檔中解析出任何事件，請檢查文檔內容。";
+      importBannerOpen.value = true;
+      return false;
+    }
+
+    createDocument({
+      id: docId,
+      name: typeof name === "string" ? name : "",
+      mimeType: typeof mimeType === "string" ? mimeType : "",
+      size: blob?.size ?? 0,
+      hasText: typeof extractedText === "string" && extractedText !== "",
+    });
+
+    if (blob) {
+      try {
+        await saveDocumentBlob(docId, blob);
+      } catch {
+        // 原檔存儲失敗不阻斷事件匯入（檢視原檔為後續功能）
+      }
+    }
+
+    if (extractedText) {
+      try {
+        await saveDocumentText(docId, extractedText);
+      } catch {
+        // 統一文本存儲失敗不阻斷事件匯入（檢視原文為後續功能）
+      }
+    }
+
+    importCount.value = importedCount;
+    importDocName.value = typeof name === "string" ? name : "";
+    importBannerOpen.value = true;
+    eventsVersion.value++;
+    return true;
+  }
+
+  // 刪除單一文檔及其全部關聯事件、原檔 blob 與統一文本；供管理中心「刪除文件」使用。
   async function removeDocument(docId) {
     if (typeof docId !== "string" || !docId) {
       return false;
@@ -394,25 +478,7 @@ export function useCalendar() {
     await deleteDocumentBlob(docId);
     await deleteDocumentText(docId);
 
-    if (getLastImport()?.docId === docId) {
-      clearLastImport();
-    }
-
     return true;
-  }
-
-  async function undoLastImport() {
-    const last = getLastImport();
-
-    if (!last) {
-      return false;
-    }
-
-    const removed = await removeDocument(last.docId);
-    importBannerOpen.value = false;
-    importError.value = "";
-    eventsVersion.value++;
-    return removed;
   }
 
   function closeImportBanner() {
@@ -461,6 +527,7 @@ export function useCalendar() {
     slideDirection,
     monthTitle,
     days,
+    bars,
     changeMonth,
     goToday,
     goToDate,
@@ -471,7 +538,8 @@ export function useCalendar() {
     updateCalendarTag,
     reorderCalendars,
     toggleAiSchedule,
-    handleAiParsed,
+    handleAiConfirmEvent,
+    handleAiConfirmBatch,
     handleBatchConfirm,
     handleBatchClose,
     openCreateEventDialog,
@@ -479,6 +547,7 @@ export function useCalendar() {
     navigateToEvent,
     handleEventSaved,
     handleEventDeleted,
+    deleteEventWithCleanup,
     handleDialogClosed,
     isImporting,
     importError,
@@ -486,7 +555,7 @@ export function useCalendar() {
     importCount,
     importDocName,
     importDocument,
-    undoLastImport,
+    importAnalyzedResult,
     removeDocument,
     closeImportBanner,
   };

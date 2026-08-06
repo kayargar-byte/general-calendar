@@ -1,3 +1,5 @@
+> **Status**: partially superseded by [ADR-0008](./0008-desktop-right-click-import.md)——「全自動寫入、不經確認」保留；「撤銷上次匯入」改為經管理中心統一刪除。
+
 # 0005：文檔事件全自動寫入，不經用戶確認
 
 文檔抽取結果直接寫入日曆，不顯示確認介面，以換取「上傳即入」的流暢 demo 體驗。

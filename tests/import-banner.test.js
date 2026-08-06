@@ -26,15 +26,13 @@ test("is hidden when closed", () => {
   assert.ok(!wrapper.find("#import-banner").exists());
 });
 
-test("emits undo and close", async () => {
+test("emits close", async () => {
   const wrapper = mount(ImportBanner, {
     props: { open: true, count: 2 },
   });
 
-  await wrapper.find("#undo-import").trigger("click");
   await wrapper.find("#close-import-banner").trigger("click");
 
-  assert.equal(wrapper.emitted("undo").length, 1);
   assert.equal(wrapper.emitted("close").length, 1);
 });
 

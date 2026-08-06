@@ -89,6 +89,53 @@ test.each([
   assert.deepEqual(getEvents(storage), []);
 });
 
+test("createEvent normalizes a same-day endDate to an empty string", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent({ endDate: "2026-08-15" }), storage);
+
+  assert.equal(event.endDate, "");
+  assert.deepEqual(getEvents(storage), [event]);
+});
+
+test("createEvent preserves a multi-day endDate", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent({ endDate: "2026-08-17" }), storage);
+
+  assert.equal(event.endDate, "2026-08-17");
+  assert.deepEqual(getEvents(storage), [event]);
+});
+
+test("createEvent allows end time before start time on a multi-day event", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(
+    buildEvent({
+      date: "2026-08-14",
+      endDate: "2026-08-15",
+      startTime: "22:00",
+      endTime: "06:00",
+    }),
+    storage,
+  );
+
+  assert.equal(event.endDate, "2026-08-15");
+  assert.equal(event.startTime, "22:00");
+  assert.equal(event.endTime, "06:00");
+});
+
+test.each([
+  ["invalid endDate", { endDate: "2026-8-15" }, /結束日期格式無效/],
+  [
+    "endDate before start date",
+    { endDate: "2026-08-14" },
+    /結束日期不得早於開始日期/,
+  ],
+])("createEvent rejects invalid endDate: %s", (name, overrides, expectedError) => {
+  const storage = new MemoryStorage();
+
+  assert.throws(() => createEvent(buildEvent(overrides), storage), expectedError);
+  assert.deepEqual(getEvents(storage), []);
+});
+
 test("getEvents sorts events by date and start time", () => {
   const storage = new MemoryStorage();
   createEvent(
@@ -137,6 +184,70 @@ test("updateEvent returns null when the event does not exist", () => {
   assert.deepEqual(getEvents(storage), []);
 });
 
+test("updateEvent preserves document source fields when not provided", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(
+    buildEvent({
+      sourceDocId: "doc-1",
+      sourceQuote: "身份證將於 2026-12-01 到期",
+    }),
+    storage,
+  );
+
+  // 表單 input 不含 source 欄位（模擬只改標題）。
+  const updated = updateEvent(
+    event.id,
+    buildEvent({ title: "證件續期改期" }),
+    storage,
+  );
+
+  assert.equal(updated.sourceDocId, "doc-1");
+  assert.equal(updated.sourceQuote, "身份證將於 2026-12-01 到期");
+  assert.equal(getEvents(storage)[0].sourceDocId, "doc-1");
+});
+
+test("updateEvent replaces document source fields when provided", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(
+    buildEvent({ sourceDocId: "doc-1", sourceQuote: "舊引用" }),
+    storage,
+  );
+
+  const updated = updateEvent(
+    event.id,
+    buildEvent({ sourceDocId: "doc-2", sourceQuote: "新引用" }),
+    storage,
+  );
+
+  assert.equal(updated.sourceDocId, "doc-2");
+  assert.equal(updated.sourceQuote, "新引用");
+  assert.equal(getEvents(storage)[0].sourceDocId, "doc-2");
+});
+
+test("updateEvent replaces endDate when provided", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent(), storage);
+
+  const updated = updateEvent(
+    event.id,
+    buildEvent({ endDate: "2026-08-16" }),
+    storage,
+  );
+
+  assert.equal(updated.endDate, "2026-08-16");
+  assert.equal(getEvents(storage)[0].endDate, "2026-08-16");
+});
+
+test("updateEvent clears endDate when not provided", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent({ endDate: "2026-08-16" }), storage);
+
+  const updated = updateEvent(event.id, buildEvent(), storage);
+
+  assert.equal(updated.endDate, "");
+  assert.equal(getEvents(storage)[0].endDate, "");
+});
+
 test("deleteEvent removes only the selected event", () => {
   const storage = new MemoryStorage();
   const firstEvent = createEvent(buildEvent(), storage);
@@ -167,6 +278,15 @@ test("getEvents assigns legacy events to the personal calendar", () => {
   storage.setItem(STORAGE_KEY, JSON.stringify([legacyEvent]));
 
   assert.equal(getEvents(storage)[0].calendarId, "personal");
+});
+
+test("getEvents fills endDate with an empty string for legacy events", () => {
+  const storage = new MemoryStorage();
+  const legacyEvent = { id: "legacy-event", ...buildEvent() };
+
+  storage.setItem(STORAGE_KEY, JSON.stringify([legacyEvent]));
+
+  assert.equal(getEvents(storage)[0].endDate, "");
 });
 
 test("findConflicts detects overlapping events on the same date", () => {
@@ -234,6 +354,82 @@ test("findConflicts returns empty when no startTime is provided", () => {
   assert.deepEqual(conflicts, []);
 });
 
+test("findConflicts detects a multi-day event covering a single-day event", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "既存會議",
+      date: "2026-08-15",
+      startTime: "09:00",
+      endTime: "10:30",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    {
+      date: "2026-08-14",
+      endDate: "2026-08-16",
+      startTime: "20:00",
+      endTime: "08:00",
+    },
+    null,
+    storage,
+  );
+
+  assert.equal(conflicts.length, 1);
+  assert.equal(conflicts[0].title, "既存會議");
+});
+
+test("findConflicts ignores single-day events outside a multi-day range", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "既存多日",
+      date: "2026-08-14",
+      endDate: "2026-08-16",
+      startTime: "20:00",
+      endTime: "08:00",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    { date: "2026-08-17", startTime: "10:00", endTime: "11:00" },
+    null,
+    storage,
+  );
+
+  assert.deepEqual(conflicts, []);
+});
+
+test("findConflicts detects partially overlapping multi-day events", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "既存多日",
+      date: "2026-08-14",
+      endDate: "2026-08-16",
+      startTime: "20:00",
+      endTime: "08:00",
+    }),
+    storage,
+  );
+
+  const conflicts = findConflicts(
+    {
+      date: "2026-08-16",
+      endDate: "2026-08-18",
+      startTime: "06:00",
+      endTime: "09:00",
+    },
+    null,
+    storage,
+  );
+
+  assert.equal(conflicts.length, 1);
+});
+
 test("searchEvents matches events by title", () => {
   const storage = new MemoryStorage();
   createEvent(buildEvent({ title: "牙醫預約" }), storage);
@@ -280,6 +476,27 @@ test("searchEvents returns empty array when no matches", () => {
   assert.deepEqual(results, []);
 });
 
+test("searchEvents matches events by source fields", () => {
+  const storage = new MemoryStorage();
+  createEvent(
+    buildEvent({
+      title: "美食節",
+      sourceTitle: "2026澳門國際美食之都嘉年華",
+      sourceSnippet: "於3月20日至29日舉行",
+      sourceQuote: "官方公告：美食節十一月舉辦",
+      sourceUrl: "https://m.gov.mo/food",
+      sourceDocId: "doc-food",
+    }),
+    storage,
+  );
+
+  assert.equal(searchEvents("嘉年華", storage).length, 1); // sourceTitle
+  assert.equal(searchEvents("3月20日", storage).length, 1); // sourceSnippet
+  assert.equal(searchEvents("十一月", storage).length, 1); // sourceQuote
+  assert.equal(searchEvents("m.gov.mo", storage).length, 1); // sourceUrl
+  assert.equal(searchEvents("doc-food", storage).length, 1); // sourceDocId
+});
+
 test("seedSampleEventsIfFirstRun seeds sample events on first run", () => {
   const storage = new MemoryStorage();
 
@@ -324,4 +541,30 @@ test("events without source fields normalize to empty strings", () => {
 
   assert.equal(event.sourceDocId, "");
   assert.equal(event.sourceQuote, "");
+});
+
+test("createEvent preserves search source fields", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(
+    buildEvent({
+      sourceUrl: "https://m.gov.mo/event/2026-food-festival",
+      sourceTitle: "  2026 澳門國際美食之都嘉年華  ",
+      sourceSnippet: " 2026年3月20日至29日  ",
+    }),
+    storage,
+  );
+
+  assert.equal(event.sourceUrl, "https://m.gov.mo/event/2026-food-festival");
+  assert.equal(event.sourceTitle, "2026 澳門國際美食之都嘉年華");
+  assert.equal(event.sourceSnippet, "2026年3月20日至29日");
+  assert.deepEqual(getEvents(storage), [event]);
+});
+
+test("search source fields normalize to empty strings when absent", () => {
+  const storage = new MemoryStorage();
+  const event = createEvent(buildEvent(), storage);
+
+  assert.equal(event.sourceUrl, "");
+  assert.equal(event.sourceTitle, "");
+  assert.equal(event.sourceSnippet, "");
 });

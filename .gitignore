@@ -10,3 +10,4 @@ output/
 *.log
 ~$*
 server/config.js
+server/.desktop-key

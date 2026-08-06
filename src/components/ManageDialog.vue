@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { TAG_COLOR_PALETTE } from "../lib/calendar-catalog.js";
 import { getDocuments } from "../lib/document-store.js";
-import { deleteEvent, getEvents } from "../lib/storage.js";
+import { getEvents } from "../lib/storage.js";
 import { useCalendar } from "../composables/useCalendar.js";
 import DocumentViewDialog from "./DocumentViewDialog.vue";
 import TagEditDialog from "./TagEditDialog.vue";
@@ -28,7 +28,7 @@ const editingTag = ref(null);
 const isTagEditOpen = ref(false);
 const viewDocId = ref("");
 const isDocumentViewOpen = ref(false);
-const { removeDocument } = useCalendar();
+const { deleteEventWithCleanup, removeDocument } = useCalendar();
 
 function loadEvents() {
   events.value = getEvents();
@@ -84,13 +84,15 @@ function handleEditEvent(event) {
   emit("edit-event", event.id);
 }
 
-function handleRemoveEvent(event) {
+async function handleRemoveEvent(event) {
   if (!window.confirm(`確定要刪除「${event.title}」嗎？`)) {
     return;
   }
 
-  deleteEvent(event.id);
+  await deleteEventWithCleanup(event.id);
   loadEvents();
+  // 文檔最後一個事件被刪時會連同文檔紀錄移除，一併刷新文件清單。
+  loadDocuments();
   emit("changed");
 }
 

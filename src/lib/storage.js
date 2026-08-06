@@ -87,6 +87,27 @@ function normalizeTime(value, fieldName) {
   return value;
 }
 
+function normalizeEndDate(value, startDate, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+
+  if (typeof value !== "string" || !isValidDateKey(value)) {
+    throw new Error(`${fieldName}格式無效。`);
+  }
+
+  // 結束日等於開始日無多日意義，規整為空字串（與單日事件一致）。
+  if (value === startDate) {
+    return "";
+  }
+
+  if (value < startDate) {
+    throw new Error(`${fieldName}不得早於開始日期。`);
+  }
+
+  return value;
+}
+
 function normalizeEvent(input, id, storage) {
   const title = typeof input?.title === "string" ? input.title.trim() : "";
 
@@ -98,10 +119,12 @@ function normalizeEvent(input, id, storage) {
     throw new Error("日期格式無效。");
   }
 
+  const endDate = normalizeEndDate(input.endDate, input.date, "結束日期");
   const startTime = normalizeTime(input.startTime, "開始時間");
   const endTime = normalizeTime(input.endTime, "結束時間");
 
-  if (startTime && endTime && endTime < startTime) {
+  // 跨日事件（如 22:00 至翌日 06:00）的結束時間可早於開始時間；僅同日事件強制不早於。
+  if (startTime && endTime && endTime < startTime && !endDate) {
     throw new Error("結束時間不得早於開始時間。");
   }
 
@@ -122,17 +145,27 @@ function normalizeEvent(input, id, storage) {
     typeof input.sourceDocId === "string" ? input.sourceDocId : "";
   const sourceQuote =
     typeof input.sourceQuote === "string" ? input.sourceQuote.trim() : "";
+  const sourceUrl =
+    typeof input.sourceUrl === "string" ? input.sourceUrl.trim() : "";
+  const sourceTitle =
+    typeof input.sourceTitle === "string" ? input.sourceTitle.trim() : "";
+  const sourceSnippet =
+    typeof input.sourceSnippet === "string" ? input.sourceSnippet.trim() : "";
 
   return {
     id,
     title,
     date: input.date,
+    endDate,
     startTime,
     endTime,
     notes: input.notes?.trim() ?? "",
     calendarId,
     sourceDocId,
     sourceQuote,
+    sourceUrl,
+    sourceTitle,
+    sourceSnippet,
   };
 }
 
@@ -198,7 +231,16 @@ export function updateEvent(id, input, storage) {
     return null;
   }
 
-  const updatedEvent = normalizeEvent(input, id, storage);
+  const current = events[eventIndex];
+  // 表單 input 不含文檔來源欄位時沿用舊值，避免編輯抹除來源（撤銷／追溯鏈斷裂）。
+  const mergedInput = {
+    ...input,
+    sourceDocId:
+      input.sourceDocId === undefined ? current.sourceDocId : input.sourceDocId,
+    sourceQuote:
+      input.sourceQuote === undefined ? current.sourceQuote : input.sourceQuote,
+  };
+  const updatedEvent = normalizeEvent(mergedInput, id, storage);
   events[eventIndex] = updatedEvent;
   saveEvents(events, storage);
 
@@ -234,6 +276,15 @@ export function reassignEventsCalendar(oldCalendarId, newCalendarId, storage) {
   }
 }
 
+// 衝突判定用「日期T時間」字串作可比鍵：YYYY-MM-DD 與 HH:MM 皆定長，字典序即時間序。
+// 多日事件以 [date, endDate] 區間參與重疊；單日事件等同 endDate 為空（僅覆蓋自身日期）。
+function eventIntervalKeys(event) {
+  return {
+    start: `${event.date}T${event.startTime}`,
+    end: `${event.endDate || event.date}T${event.endTime || event.startTime}`,
+  };
+}
+
 export function findConflicts(event, excludeId, storage) {
   if (!event || typeof event !== "object") {
     return [];
@@ -243,22 +294,24 @@ export function findConflicts(event, excludeId, storage) {
     return [];
   }
 
-  const newStart = event.startTime;
-  const newEnd = event.endTime || event.startTime;
+  const newInterval = eventIntervalKeys(event);
 
   return getEvents(storage).filter((existing) => {
     if (existing.id === excludeId) {
       return false;
     }
 
-    if (existing.date !== event.date || !existing.startTime) {
+    // 無開始時間的事件不參與衝突判定（維持既有語義）。
+    if (!existing.startTime) {
       return false;
     }
 
-    const existingStart = existing.startTime;
-    const existingEnd = existing.endTime || existing.startTime;
+    const existingInterval = eventIntervalKeys(existing);
 
-    return newStart < existingEnd && existingStart < newEnd;
+    return (
+      newInterval.start < existingInterval.end &&
+      existingInterval.start < newInterval.end
+    );
   });
 }
 
@@ -271,12 +324,21 @@ export function searchEvents(query, storage) {
   }
 
   return getEvents(storage).filter((event) => {
-    const title = typeof event.title === "string" ? event.title : "";
-    const notes = typeof event.notes === "string" ? event.notes : "";
+    // 標題、備註與來源欄位皆可搜：文檔事件（sourceDocId/sourceQuote）與
+    // AI 搜尋事件（sourceUrl/sourceTitle/sourceSnippet）可按來源檢索。
+    const fields = [
+      event.title,
+      event.notes,
+      event.sourceTitle,
+      event.sourceSnippet,
+      event.sourceQuote,
+      event.sourceUrl,
+      event.sourceDocId,
+    ];
 
-    return (
-      title.toLowerCase().includes(trimmedQuery) ||
-      notes.toLowerCase().includes(trimmedQuery)
+    return fields.some(
+      (field) =>
+        typeof field === "string" && field.toLowerCase().includes(trimmedQuery),
     );
   });
 }

@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";
 import {
   DOCUMENTS_STORAGE_KEY,
-  LAST_IMPORT_KEY,
-  clearLastImport,
   createDocument,
   deleteDocument,
   deleteDocumentBlob,
@@ -12,10 +10,8 @@ import {
   getDocumentBlob,
   getDocuments,
   getDocumentText,
-  getLastImport,
   saveDocumentBlob,
   saveDocumentText,
-  setLastImport,
 } from "../src/lib/document-store.js";
 
 class MemoryStorage {
@@ -173,15 +169,4 @@ test("createDocument records hasText when provided", () => {
 
   assert.equal(record.hasText, true);
   assert.equal(getDocument("doc-2", storage).hasText, true);
-});
-
-test("last-import pointer round-trips and clears", () => {
-  const storage = new MemoryStorage();
-
-  assert.equal(getLastImport(storage), null);
-  setLastImport("doc-1", storage);
-  assert.equal(getLastImport(storage).docId, "doc-1");
-  assert.equal(storage.getItem(LAST_IMPORT_KEY) !== null, true);
-  clearLastImport(storage);
-  assert.equal(getLastImport(storage), null);
 });

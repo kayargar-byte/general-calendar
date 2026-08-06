@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import {
   DEFAULT_CALENDAR_ID,
   getCalendars,
@@ -26,10 +26,16 @@ const errorRef = ref(null);
 const titleInputRef = ref(null);
 const title = ref("");
 const date = ref("");
+const endDate = ref("");
 const calendarId = ref(DEFAULT_CALENDAR_ID);
 const startTime = ref("");
 const endTime = ref("");
 const notes = ref("");
+const sourceDocId = ref("");
+const sourceQuote = ref("");
+const sourceUrl = ref("");
+const sourceTitle = ref("");
+const sourceSnippet = ref("");
 const formErrorHidden = ref(true);
 const formErrorMessage = ref("");
 const conflictConfirmed = ref(false);
@@ -38,6 +44,20 @@ function clearFormError() {
   formErrorMessage.value = "";
   formErrorHidden.value = true;
 }
+
+// 多日事件在日期標籤顯示範圍（如「8月14日 – 8月16日」），僅 endDate 非空時出現。
+const dateRangeLabel = computed(() => {
+  if (!endDate.value || !date.value) {
+    return "";
+  }
+
+  const format = (key) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+    return match ? `${Number(match[2])}月${Number(match[3])}日` : key;
+  };
+
+  return `${format(date.value)} – ${format(endDate.value)}`;
+});
 
 function showFormError(error) {
   formErrorMessage.value =
@@ -59,24 +79,42 @@ function populateForm() {
   if (event) {
     title.value = event.title;
     date.value = event.date;
+    endDate.value = event.endDate;
     calendarId.value = event.calendarId;
     startTime.value = event.startTime;
     endTime.value = event.endTime;
     notes.value = event.notes;
+    sourceDocId.value = event.sourceDocId;
+    sourceQuote.value = event.sourceQuote;
+    sourceUrl.value = event.sourceUrl;
+    sourceTitle.value = event.sourceTitle;
+    sourceSnippet.value = event.sourceSnippet;
   } else if (props.prefill) {
     title.value = props.prefill.title;
     date.value = props.prefill.date;
+    endDate.value = props.prefill.endDate;
     calendarId.value = props.prefill.calendarId;
     startTime.value = props.prefill.startTime;
     endTime.value = props.prefill.endTime;
     notes.value = props.prefill.notes;
+    sourceDocId.value = props.prefill.sourceDocId;
+    sourceQuote.value = props.prefill.sourceQuote;
+    sourceUrl.value = props.prefill.sourceUrl;
+    sourceTitle.value = props.prefill.sourceTitle;
+    sourceSnippet.value = props.prefill.sourceSnippet;
   } else {
     title.value = "";
     date.value = props.pendingDate;
+    endDate.value = "";
     calendarId.value = props.calendars[0]?.id ?? DEFAULT_CALENDAR_ID;
     startTime.value = "";
     endTime.value = "";
     notes.value = "";
+    sourceDocId.value = "";
+    sourceQuote.value = "";
+    sourceUrl.value = "";
+    sourceTitle.value = "";
+    sourceSnippet.value = "";
   }
 }
 
@@ -118,10 +156,16 @@ function handleSubmit() {
     const input = {
       title: title.value,
       date: date.value,
+      endDate: endDate.value,
       calendarId: calendarId.value,
       startTime: startTime.value,
       endTime: endTime.value,
       notes: notes.value,
+      sourceDocId: sourceDocId.value,
+      sourceQuote: sourceQuote.value,
+      sourceUrl: sourceUrl.value,
+      sourceTitle: sourceTitle.value,
+      sourceSnippet: sourceSnippet.value,
     };
 
     if (!conflictConfirmed.value) {
@@ -172,7 +216,7 @@ function handleDelete() {
   }
 
   deleteEvent(props.editingEventId);
-  emit("deleted", event.date);
+  emit("deleted", event);
 }
 </script>
 
@@ -214,8 +258,18 @@ function handleDelete() {
         v-model="title"
       />
 
-      <label for="event-date">日期</label>
+      <label for="event-date">
+        日期{{ dateRangeLabel ? `（${dateRangeLabel}）` : "" }}
+      </label>
       <input id="event-date" name="date" type="date" required v-model="date" />
+
+      <label for="event-end-date">結束日期（選填）</label>
+      <input
+        id="event-end-date"
+        name="endDate"
+        type="date"
+        v-model="endDate"
+      />
 
       <label for="event-calendar">日曆</label>
       <select id="event-calendar" name="calendarId" v-model="calendarId">
@@ -246,6 +300,16 @@ function handleDelete() {
 
       <label for="event-notes">備註</label>
       <textarea id="event-notes" name="notes" rows="4" v-model="notes"></textarea>
+
+      <div v-if="sourceUrl" id="event-source" class="event-source">
+        <span class="event-source-label">來源</span>
+        <a :href="sourceUrl" target="_blank" rel="noopener">
+          {{ sourceTitle || sourceUrl }}
+        </a>
+        <p v-if="sourceSnippet" class="event-source-snippet">
+          {{ sourceSnippet }}
+        </p>
+      </div>
 
       <footer class="dialog-actions">
         <button

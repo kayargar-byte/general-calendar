@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCalendar } from "./composables/useCalendar.js";
 import { useTheme } from "./composables/useTheme.js";
+import { useDesktopImports } from "./composables/useDesktopImports.js";
 import { toDateKey } from "./lib/date-utils.js";
 import { getEvents } from "./lib/storage.js";
 import CalendarGrid from "./components/CalendarGrid.vue";
@@ -23,6 +24,7 @@ const {
   calendars,
   visibleCalendarIds,
   days,
+  bars,
   visibleMonth,
   changeMonth,
   goToday,
@@ -44,7 +46,8 @@ const {
   isBatchDialogOpen,
   pendingBatchEvents,
   slideDirection,
-  handleAiParsed,
+  handleAiConfirmEvent,
+  handleAiConfirmBatch,
   handleBatchConfirm,
   handleBatchClose,
   handleEventSaved,
@@ -56,7 +59,7 @@ const {
   importCount,
   importDocName,
   importDocument,
-  undoLastImport,
+  importAnalyzedResult,
   closeImportBanner,
 } = useCalendar();
 
@@ -67,6 +70,9 @@ const isManageOpen = ref(false);
 const isSettingsOpen = ref(false);
 const isDatePickerOpen = ref(false);
 const { theme, toggleTheme } = useTheme();
+
+// 桌面右鍵匯入收件箱輪詢（瀏覽器必須開啟，見 docs/adr/0008）。
+useDesktopImports({ importAnalyzedResult, isImporting });
 
 function handleDatePickerConfirm({ year, monthIndex }) {
   isDatePickerOpen.value = false;
@@ -229,7 +235,6 @@ onUnmounted(() => {
     :count="importCount"
     :doc-name="importDocName"
     :error="importError"
-    @undo="undoLastImport"
     @close="closeImportBanner"
   />
 
@@ -263,7 +268,8 @@ onUnmounted(() => {
         ref="aiSchedulePanelRef"
         :open="isAiScheduleOpen"
         :calendars="calendars"
-        @parsed="handleAiParsed"
+        @confirm-event="handleAiConfirmEvent"
+        @confirm-events="handleAiConfirmBatch"
         @close="toggleAiSchedule"
       />
     </aside>
@@ -305,6 +311,7 @@ onUnmounted(() => {
           >
             <CalendarGrid
               :days="days"
+              :bars="bars"
               :calendars="calendars"
               @open-create="openCreateEventDialog"
               @open-edit="openEditEventDialog"

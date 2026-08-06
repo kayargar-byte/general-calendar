@@ -1,10 +1,14 @@
+import fs from "node:fs";
 import http from "node:http";
+import { fileURLToPath } from "node:url";
 import busboy from "busboy";
 import {
   assertFileSize,
   analyzeDocument,
   MAX_FILE_BYTES,
 } from "./extractors.js";
+import { runSearchToolLoop } from "./search-tools.js";
+import { ackImport, getPendingImports, pushImport } from "./inbox.js";
 
 let AI_CONFIG = null;
 
@@ -19,6 +23,9 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
+
+// 記憶體態的最近畫像摘要快取：瀏覽器在搜索／匯入時推入，桌面右鍵匯入（X-Stash 不帶 profile）共用（見 docs/adr/0008）。
+let lastProfile = "";
 
 async function handleAiProxy(req, res) {
   if (!AI_CONFIG) {
@@ -51,7 +58,41 @@ async function handleAiProxy(req, res) {
     return;
   }
 
+  // askAi 攜帶畫像摘要（profile 欄位），存入快取供桌面右鍵匯入抽取使用；空值不覆寫快取。
+  if (
+    typeof parsedBody.profile === "string" &&
+    parsedBody.profile.trim() !== ""
+  ) {
+    lastProfile = parsedBody.profile;
+  }
+
   try {
+    const maxTokens = parsedBody.max_tokens ?? 1024;
+
+    // AI 搜尋（search:true）走工具循環：模型可發出 web_search tool_use，由 search-tools.js 調 Serper 回填。
+    if (parsedBody.search === true) {
+      try {
+        const data = await runSearchToolLoop({
+          system: parsedBody.system,
+          messages: parsedBody.messages,
+          maxTokens,
+          aiConfig: AI_CONFIG,
+        });
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(data));
+      } catch (err) {
+        // 上游非 ok 的錯誤訊息沿用（見 search-tools.js）；網路斷開給友善提示。
+        const message =
+          err?.cause?.code === "ECONNREFUSED" ||
+          err?.cause?.code === "ENOTFOUND"
+            ? "無法連接 AI 服務，請檢查網路連線。"
+            : (err?.message ?? "AI 搜尋失敗。");
+        res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: { message } }));
+      }
+      return;
+    }
+
     const upstream = await fetch(AI_CONFIG.remoteEndpoint, {
       method: "POST",
       headers: {
@@ -61,8 +102,9 @@ async function handleAiProxy(req, res) {
       },
       body: JSON.stringify({
         model: AI_CONFIG.model,
-        max_tokens: parsedBody.max_tokens ?? 1024,
+        max_tokens: maxTokens,
         thinking: { type: "disabled" },
+        reasoning_effort: AI_CONFIG.reasoningEffort,
         system: parsedBody.system,
         messages: parsedBody.messages,
       }),
@@ -117,6 +159,7 @@ async function handleDocumentAnalyze(req, res) {
   let mimeType = "";
   let filename = "";
   let calendars = [];
+  let profile = "";
   let exceededLimit = false;
   const fileChunks = [];
 
@@ -144,6 +187,8 @@ async function handleDocumentAnalyze(req, res) {
         } catch {
           calendars = [];
         }
+      } else if (name === "profile") {
+        profile = value;
       }
     });
 
@@ -164,6 +209,11 @@ async function handleDocumentAnalyze(req, res) {
 
   const buffer = Buffer.concat(fileChunks);
 
+  // 瀏覽器匯入攜帶畫像摘要並更新快取；桌面右鍵匯入不帶 profile，沿用最近一次快取。
+  if (profile.trim()) {
+    lastProfile = profile;
+  }
+
   try {
     assertFileSize(buffer.length);
     const { events, extractedText } = await analyzeDocument({
@@ -171,8 +221,15 @@ async function handleDocumentAnalyze(req, res) {
       filename,
       buffer,
       calendars,
+      profile: lastProfile,
       aiConfig: AI_CONFIG,
     });
+
+    // 桌面右鍵匯入（X-Stash）：抽取結果一併放入收件箱供瀏覽器輪詢（見 docs/adr/0008）。
+    if (req.headers["x-stash"] === "1") {
+      pushImport({ events, extractedText, docName: filename, mimeType });
+    }
+
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(
       JSON.stringify({ events, extractedText, docName: filename, mimeType }),
@@ -190,6 +247,21 @@ async function handleDocumentAnalyze(req, res) {
             : 502;
     reject(res, status, err?.message ?? "文件分析失敗。");
   }
+}
+
+function handlePendingImports(res) {
+  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ imports: getPendingImports() }));
+}
+
+function handleAckImport(res, id) {
+  if (!ackImport(id)) {
+    reject(res, 404, "找不到待處理匯入。");
+    return;
+  }
+
+  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ ok: true }));
 }
 
 const server = http.createServer((req, res) => {
@@ -237,9 +309,38 @@ const server = http.createServer((req, res) => {
     }
   }
 
+  // 收件箱端點不依賴 AI 金鑰，但存取仍受 enforceSecurity（origin 白名單＋代理金鑰）約束。
+  if (
+    urlPath === "/api/imports/pending" ||
+    urlPath.startsWith("/api/imports/")
+  ) {
+    if (!enforceSecurity(req, res)) {
+      return;
+    }
+
+    if (urlPath === "/api/imports/pending" && req.method === "GET") {
+      handlePendingImports(res);
+      return;
+    }
+
+    const ackMatch = /^\/api\/imports\/([^/]+)\/ack$/.exec(urlPath);
+
+    if (ackMatch && req.method === "POST") {
+      handleAckImport(res, ackMatch[1]);
+      return;
+    }
+  }
+
   res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
   res.end("Not Found");
 });
+
+// 桌面右鍵腳本（非瀏覽器）無法讀取 ESM 的 config.js，server 啟動時把代理金鑰寫入
+// server/.desktop-key 供腳本讀取（見 docs/adr/0008）。
+if (AI_CONFIG) {
+  const keyFile = fileURLToPath(new URL(".desktop-key", import.meta.url));
+  fs.writeFileSync(keyFile, AI_CONFIG.proxyKey);
+}
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`AI 代理伺服器已啟動：http://localhost:${PORT}`);

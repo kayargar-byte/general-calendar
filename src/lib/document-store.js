@@ -202,28 +202,3 @@ export async function getDocumentText(id) {
 export async function deleteDocumentText(id) {
   await deleteBlobEntry(`text:${id}`);
 }
-
-export const LAST_IMPORT_KEY = "general-calendar.imports.last.v1";
-
-export function getLastImport(storage) {
-  const storedValue = resolveStorage(storage).getItem(LAST_IMPORT_KEY);
-
-  if (!storedValue) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(storedValue);
-    return typeof parsed?.docId === "string" && parsed.docId ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setLastImport(docId, storage) {
-  resolveStorage(storage).setItem(LAST_IMPORT_KEY, JSON.stringify({ docId }));
-}
-
-export function clearLastImport(storage) {
-  resolveStorage(storage).removeItem(LAST_IMPORT_KEY);
-}

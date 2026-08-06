@@ -100,7 +100,7 @@ function toDateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function buildAnalyzePrompt(calendars, isSpreadsheet) {
+function buildAnalyzePrompt(calendars, isSpreadsheet, profile = "") {
   const today = new Date();
   const weekday = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][
     today.getDay()
@@ -120,14 +120,23 @@ function buildAnalyzePrompt(calendars, isSpreadsheet) {
     "- 「下午三時」或「下午3點」= 15:00，「上午九時」= 09:00",
     "- 未提及時間時 startTime 與 endTime 留空字串",
     "- 若提及時長（如「一小時」），據此推算 endTime",
+    "- 多日活動（跨天）須輸出 endDate（結束日，YYYY-MM-DD）；單日活動 endDate 留空字串",
     "",
     "日曆分類（calendarId）請從以下選擇最貼切的：",
     categoryList,
     "",
+    ...(profile
+      ? [
+          "用戶畫像（僅供歸類參考）：",
+          profile,
+          "分類偏置：依用戶畫像與文檔內容歸類；畫像顯示常用或偏好的分類時，優先選那些分類。",
+          "",
+        ]
+      : []),
     tableRule,
     "",
     "只返回一個 JSON 陣列，不要加任何說明文字或 markdown 格式符號：",
-    '[{"title":"事件標題","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註","quote":"支持此事件的原文段落（節錄原文文字）"}]',
+    '[{"title":"事件標題","date":"YYYY-MM-DD","endDate":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","calendarId":"personal","notes":"備註","quote":"支持此事件的原文段落（節錄原文文字）"}]',
     "quote 必須節錄自文檔原文，不得自行編造。若無對應原文，quote 留空字串。",
   ].join("\n");
 }
@@ -177,6 +186,7 @@ function cleanEvents(parsed) {
     .map((entry) => ({
       title: typeof entry.title === "string" ? entry.title.trim() : "",
       date: typeof entry.date === "string" ? entry.date.trim() : "",
+      endDate: typeof entry.endDate === "string" ? entry.endDate.trim() : "",
       startTime: typeof entry.startTime === "string" ? entry.startTime : "",
       endTime: typeof entry.endTime === "string" ? entry.endTime : "",
       calendarId: typeof entry.calendarId === "string" ? entry.calendarId : "",
@@ -199,6 +209,7 @@ async function callTextAi({ system, userText, aiConfig }) {
       model: aiConfig.model,
       max_tokens: 2048,
       thinking: { type: "disabled" },
+      reasoning_effort: aiConfig.reasoningEffort,
       system,
       messages: [{ role: "user", content: userText }],
     }),
@@ -221,7 +232,7 @@ async function callVisionAi({ base64, mimeType, prompt, aiConfig }) {
   const response = await fetch(aiConfig.visionEndpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${aiConfig.apiKey}`,
+      Authorization: `Bearer ${aiConfig.visionApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -247,7 +258,14 @@ async function callVisionAi({ base64, mimeType, prompt, aiConfig }) {
   return data?.choices?.[0]?.message?.content ?? "";
 }
 
-export async function analyzeDocument({ mimeType, filename, buffer, calendars, aiConfig }) {
+export async function analyzeDocument({
+  mimeType,
+  filename,
+  buffer,
+  calendars,
+  profile = "",
+  aiConfig,
+}) {
   const type = normalizeType(mimeType, filename);
 
   if (!type) {
@@ -257,7 +275,7 @@ export async function analyzeDocument({ mimeType, filename, buffer, calendars, a
   }
 
   if (type === "image") {
-    const prompt = buildAnalyzePrompt(calendars, false);
+    const prompt = buildAnalyzePrompt(calendars, false, profile);
     const content = await callVisionAi({
       base64: buffer.toString("base64"),
       mimeType,
@@ -311,7 +329,7 @@ export async function analyzeDocument({ mimeType, filename, buffer, calendars, a
     });
   }
 
-  const system = buildAnalyzePrompt(calendars, isSpreadsheet);
+  const system = buildAnalyzePrompt(calendars, isSpreadsheet, profile);
   const content = await callTextAi({ system, userText: unified, aiConfig });
   const events = cleanEvents(extractJson(content));
 
