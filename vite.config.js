@@ -8,7 +8,7 @@ const calendarEntry = fileURLToPath(
 const indexEntry = fileURLToPath(new URL("./index.html", import.meta.url));
 
 export default defineConfig({
-  base: "/general-calendar/",
+  base: process.env.BASE_PATH || "/",
   plugins: [vue()],
   test: {
     environment: "jsdom",
